@@ -1282,8 +1282,10 @@ int main( int argc, char **argv ) {
     nb_id = rrc->configuration.cell_identity;
   } else if (node_type == ngran_gNB_DU) {
     cu_du_id = rrc->configuration.cell_identity;
+    nb_id = cu_du_id;  
   } else if (node_type == ngran_gNB_CU) {
     cu_du_id = rrc->node_id;
+    nb_id = cu_du_id; 
   } else {
     LOG_E(NR_RRC, "not supported ran type detect\n");
   }
