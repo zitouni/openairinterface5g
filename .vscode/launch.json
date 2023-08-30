@@ -21,9 +21,10 @@
         //"-C 3619200000", // For the UE
         "--sa",
         //"--nokrnmod", // For the UE
-        "-O",
+        "-O"
         // "${workspaceFolder}/targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.fr1.106PRB.usrpb210-flex-ric.conf"
         "${workspaceFolder}/targets/PROJECTS/GENERIC-NR-5GC/CONF/du_gnb_ric.conf"
+        //"${workspaceFolder}/targets/PROJECTS/GENERIC-NR-5GC/CONF/cu_gnb_ric.conf"
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceRoot}",

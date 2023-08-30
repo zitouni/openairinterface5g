@@ -934,6 +934,125 @@ void read_gtp_sm(gtp_ind_msg_t* data)
 
 }
 
+
+static void cuKpmSm(kpm_ind_msg_t* msg){
+
+  size_t num_ues = 0;
+  num_ues = RC.nrrrc[mod_id]->Nb_ue;
+
+  if (num_ues > 0) {
+    // // get the info to calculate the resource utilization
+    // NR_ServingCellConfigCommon_t *scc = RC.nrmac[mod_id]->common_channels[0].ServingCellConfigCommon;
+    // int cur_slot = RC.nrmac[mod_id]->slot;
+    // // int num_dl_slots = scc->tdd_UL_DL_ConfigurationCommon->pattern1.nrofDownlinkSlots;
+    // // get total number of available resource blocks
+    // int n_rb_sched = 0;
+    // if (UE_info->list[0] != NULL) {
+    //   /* Get bwpSize and TDA from the first UE */
+    //   /* This is temporary and it assumes all UEs have the same BWP and TDA*/
+    //   NR_UE_info_t *UE = UE_info->list[0];
+    //   NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
+    //   NR_UE_DL_BWP_t *current_BWP = &UE->current_DL_BWP;
+    //   const int tda = get_dl_tda(RC.nrmac[mod_id], scc, cur_slot);
+    //   int startSymbolIndex, nrOfSymbols;
+    //   const struct NR_PDSCH_TimeDomainResourceAllocationList *tdaList = current_BWP->tdaList;
+    //   AssertFatal(tda < tdaList->list.count, "time_domain_allocation %d>=%d\n", tda, tdaList->list.count);
+    //   const int startSymbolAndLength = tdaList->list.array[tda]->startSymbolAndLength;
+    //   SLIV2SL(startSymbolAndLength, &startSymbolIndex, &nrOfSymbols);
+    //   const int coresetid = sched_ctrl->coreset->controlResourceSetId;
+    //   const uint16_t bwpSize = coresetid == 0 ? RC.nrmac[mod_id]->cset0_bwp_size : current_BWP->BWPSize;
+    //   const uint16_t BWPStart = coresetid == 0 ? RC.nrmac[mod_id]->cset0_bwp_start : current_BWP->BWPStart;
+    //   const uint16_t slbitmap = SL_to_bitmap(startSymbolIndex, nrOfSymbols);
+    //   uint16_t *vrb_map = RC.nrmac[mod_id]->common_channels[0].vrb_map;
+    //   uint16_t rballoc_mask[bwpSize];
+    //   for (int i = 0; i < bwpSize; i++) {
+    //     // calculate mask: init with "NOT" vrb_map:
+    //     // if any RB in vrb_map is blocked (1), the current RBG will be 0
+    //     rballoc_mask[i] = (~vrb_map[i + BWPStart]) & 0x3fff; //bitwise not and 14 symbols
+    //     // if all the pdsch symbols are free
+    //     if ((rballoc_mask[i] & slbitmap) == slbitmap) {
+    //       n_rb_sched++;
+    //     }
+    //   }
+    // }
+
+    // TODO: assign the MeasData every granulPeriod
+    for (size_t i = 0; i < msg->MeasData_len; i++) {
+      adapter_MeasDataItem_t* item = &msg->MeasData[i];
+
+      // TODO: assign measRecord_len according to
+      //  (1) the length of Measurements Information List IE (format1) or
+      //  (2) Measurements Information Condition UE List IE (format2)
+      //  from the action definition or subscription request
+
+      // TODO: only support KPM format 1, and it only can handle one UE's information
+      //  assume to record one data: DL resource utilization
+      item->measRecord_len = 1;
+      if (item->measRecord_len > 0) {
+        item->measRecord = calloc(item->measRecord_len, sizeof(adapter_MeasRecord_t));
+        assert(item->measRecord != NULL && "Memory exhausted");
+      }
+
+      // UE_iterator(UE_info->list, UE)
+      // {
+      //   int dl_rb_usage = 0;
+      //   if (is_xlsch_in_slot(RC.nrmac[mod_id]->dlsch_slot_bitmap[cur_slot / 64], cur_slot))
+      //     dl_rb_usage = UE->mac_stats.dl.current_rbs*100/n_rb_sched;
+
+      //   // TODO: go through the measRecord according to the Measurements Information (format 1) or Information Condition UE (format 2) List IE
+      //   adapter_MeasRecord_t *record_PrbDlUsage = &item->measRecord[0];
+      //   record_PrbDlUsage->type = MeasRecord_int;
+      //   record_PrbDlUsage->int_val = dl_rb_usage;
+      // }
+
+      // incompleteFlag = -1, the data is reliable
+      item->incompleteFlag = -1;
+    }
+
+    // TODO: assign MeasInfo_len according to the action definition or subscription request
+    msg->MeasInfo_len = 1;
+    if (msg->MeasInfo_len > 0) {
+      msg->MeasInfo = calloc(msg->MeasInfo_len, sizeof(MeasInfo_t));
+      assert(msg->MeasInfo != NULL && "Memory exhausted" );
+
+      MeasInfo_t* info = &msg->MeasInfo[0];
+      info->meas_type = KPM_V2_MEASUREMENT_TYPE_NAME;
+      char* measName = "PrbDlUsage";
+      info->measName.len = strlen(measName);
+      info->measName.buf = malloc(strlen(measName));
+      assert(info->measName.buf != NULL && "memory exhausted");
+      memcpy(info->measName.buf, measName, msg->MeasInfo[0].measName.len);
+
+      // TODO: assign labelInfo_len according to the action definition (?)
+      info->labelInfo_len = 1;
+      info->labelInfo = calloc(info->labelInfo_len, sizeof(adapter_LabelInfoItem_t));
+      assert(info->labelInfo != NULL && "memory exhausted");
+      adapter_LabelInfoItem_t* label = &info->labelInfo[0];
+      label->noLabel = calloc(1, sizeof(long));
+      assert(label->noLabel != NULL && "memory exhausted");
+      *(label->noLabel) = 0;
+    }
+  } else {
+    for (size_t i = 0; i < msg->MeasData_len; i++) {
+      adapter_MeasDataItem_t* item = &msg->MeasData[i];
+      item->measRecord_len = 1;
+      if (item->measRecord_len > 0) {
+        item->measRecord = calloc(item->measRecord_len, sizeof(adapter_MeasRecord_t));
+        assert(item->measRecord != NULL && "Memory exhausted");
+      }
+
+      adapter_MeasRecord_t *record_nodata = &item->measRecord[0];
+      record_nodata->type = MeasRecord_int;
+      record_nodata->int_val = 0;
+
+      // incompleteFlag = 0, the data is not reliable
+      item->incompleteFlag = 0;
+    }
+    msg->MeasInfo_len = 0;
+    msg->MeasInfo = NULL;
+  }
+}
+
 static
 void read_kpm_sm(kpm_ind_data_t* data)
 {
@@ -959,12 +1078,15 @@ void read_kpm_sm(kpm_ind_data_t* data)
   }
 
   // get the number of connected UEs
-  NR_UEs_t *UE_info = &RC.nrmac[mod_id]->UE_info;
-  size_t num_ues = 0;
-  UE_iterator(UE_info->list, ue) {
-    if (ue)
-      num_ues += 1;
-  }
+  
+  if (NODE_IS_MONOLITHIC(RC.nrrrc[0]->node_type) || NODE_IS_DU(RC.nrrrc[0]->node_type)){
+    size_t num_ues = 0;
+    NR_UEs_t *UE_info = &RC.nrmac[mod_id]->UE_info;
+    
+    UE_iterator(UE_info->list, ue) {
+      if (ue)
+        num_ues += 1;
+    }
 
   if (num_ues > 0) {
     // get the info to calculate the resource utilization
@@ -1078,9 +1200,13 @@ void read_kpm_sm(kpm_ind_data_t* data)
     msg->MeasInfo = NULL;
   }
 
+  }// end if NODE_IS_MONOLITHIC or NODE_IS_DU
+  else{ //NODE_IS_CU
+    cuKpmSm(msg);
+  }
+
   msg->granulPeriod = NULL;
 }
-
 
 
 static
