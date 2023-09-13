@@ -1,4 +1,8 @@
 [submodule "openair2/E2AP/flexric"]
 	path = openair2/E2AP/flexric
 	url = https://gitlab.eurecom.fr/mosaic5g/flexric.git
-	branch = remotes/origin/mir_dev
+	branch = remotes/eurecom/mir_dev
+[submodule "openair2/E2AP/flexric"]
+	path = openair2/E2AP/flexric
+	url = https://gitlab.surrey.ac.uk/rz0005/flexric.git
+	branch = remotes/origin/ics-flex-ric
