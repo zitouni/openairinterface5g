@@ -3027,6 +3027,13 @@ int nr_mac_interrupt_ue_transmission(gNB_MAC_INST *mac, NR_UE_info_t *UE, interr
   return 0;
 }
 
+int nr_transmission_action_indicator_stop(gNB_MAC_INST *mac, NR_UE_info_t *UE_info)
+{
+  nr_mac_interrupt_ue_transmission(mac, UE_info, FOLLOW_OUTOFSYNC, 10);
+  LOG_I(NR_MAC, "gNB-DU received the TransmissionActionIndicator with Stop value for UE %04x\n", UE_info->rnti);
+  return 0;
+}
+
 void nr_mac_trigger_release_complete(gNB_MAC_INST *mac, int rnti)
 {
   // the CU might not know such UE, e.g., because we never sent a message to
@@ -3088,7 +3095,10 @@ void nr_mac_update_timers(module_id_t module_id,
     if (nr_timer_tick(&sched_ctrl->transm_interrupt)) {
       /* expired */
       nr_timer_stop(&sched_ctrl->transm_interrupt);
-      nr_mac_apply_cellgroup(mac, UE, frame, slot);
+      if (UE->interrupt_action == FOLLOW_OUTOFSYNC)
+        nr_mac_trigger_ul_failure(sched_ctrl, UE->current_DL_BWP.scs);
+      else
+        nr_mac_apply_cellgroup(mac, UE, frame, slot);
     }
   }
 }
