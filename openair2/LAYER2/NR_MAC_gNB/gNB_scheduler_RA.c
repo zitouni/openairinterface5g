@@ -1501,8 +1501,8 @@ static void nr_generate_Msg2(module_id_t module_idP,
       uint32_t delay_ms = servingCellConfig && servingCellConfig->downlinkBWP_ToAddModList
                               ? NR_RRC_SETUP_DELAY_MS + NR_RRC_BWP_SWITCHING_DELAY_MS
                               : NR_RRC_SETUP_DELAY_MS;
-      NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
-      sched_ctrl->rrc_processing_timer = (delay_ms << ra->DL_BWP.scs);
+      int delay = nr_mac_get_reconfig_delay_slots(ra->DL_BWP.scs, delay_ms);
+      nr_mac_interrupt_ue_transmission(RC.nrmac[module_idP], UE, FOLLOW_INSYNC, delay);
     }
   }
 
@@ -2014,8 +2014,9 @@ static void nr_generate_Msg4(module_id_t module_idP,
       // 3GPP TS 38.331 Section 12 Table 12.1-1: UE performance requirements for RRC procedures for UEs
       // Msg4 may transmit a RRCReconfiguration, for example when UE sends RRCReestablishmentComplete and MAC CE for C-RNTI in Msg3.
       // In that case, gNB will generate a RRCReconfiguration that will be transmitted in Msg4, so we need to apply CellGroup after the Ack,
-      // UE->apply_cellgroup was already set when processing RRCReestablishment message
-      nr_mac_enable_ue_rrc_processing_timer(nr_mac, UE, UE->apply_cellgroup);
+      // UE->reconfigCellGroup was already set when processing RRCReestablishment message
+      int delay = nr_mac_get_reconfig_delay_slots(UE->current_UL_BWP.scs, NR_RRC_RECONFIGURATION_DELAY_MS);
+      nr_mac_interrupt_ue_transmission(nr_mac, UE, UE->interrupt_action, delay);
 
       nr_clear_ra_proc(ra);
     } else {
@@ -2052,8 +2053,9 @@ static void nr_check_Msg4_Ack(module_id_t module_id, int CC_id, frame_t frame, s
       // 3GPP TS 38.331 Section 12 Table 12.1-1: UE performance requirements for RRC procedures for UEs
       // Msg4 may transmit a RRCReconfiguration, for example when UE sends RRCReestablishmentComplete and MAC CE for C-RNTI in Msg3.
       // In that case, gNB will generate a RRCReconfiguration that will be transmitted in Msg4, so we need to apply CellGroup after the Ack,
-      // UE->apply_cellgroup was already set when processing RRCReestablishment message
-      nr_mac_enable_ue_rrc_processing_timer(RC.nrmac[module_id], UE, UE->apply_cellgroup);
+      // UE->reconfigCellGroup already set when processing RRCReestablishment message
+      int delay = nr_mac_get_reconfig_delay_slots(UE->current_UL_BWP.scs, NR_RRC_RECONFIGURATION_DELAY_MS);
+      nr_mac_interrupt_ue_transmission(RC.nrmac[module_id], UE, UE->interrupt_action, delay);
 
       nr_clear_ra_proc(ra);
       if (sched_ctrl->retrans_dl_harq.head >= 0) {
