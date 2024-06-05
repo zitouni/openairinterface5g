@@ -1862,6 +1862,34 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
       LOG_I(RRC, "UE %d: transaction %d still ongoing for action %d\n", UE->rrc_ue_id, i, UE->xids[i]);
     }
   }
+
+  if (UE->ho_context != NULL) {
+    LOG_A(NR_RRC, "UE %d Handover: received RRC Reconfiguration Complete\n", UE->rrc_ue_id);
+    DevAssert(UE->ho_context->target != NULL);
+    UE->ho_context->target->reconfig_complete = true;
+
+    // TODO make fptr
+    nr_ho_source_cu_t *source_ctx = UE->ho_context->source;
+    if (source_ctx != NULL) { // F1 case
+      LOG_I(NR_RRC, "UE %d Handover: trigger release on DU assoc_id %d\n", UE->rrc_ue_id, source_ctx->du->assoc_id);
+      gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
+      RETURN_IF_INVALID_ASSOC_ID(source_ctx->du->assoc_id);
+      f1ap_ue_context_release_cmd_t cmd = {
+          .gNB_CU_ue_id = UE->rrc_ue_id,
+          .gNB_DU_ue_id = source_ctx->du_ue_id,
+          .cause = F1AP_CAUSE_RADIO_NETWORK, // better
+          .cause_value = 5, // 5 = F1AP_CauseRadioNetwork_interaction_with_other_procedure
+          .srb_id = DCCH,
+      };
+      rrc->mac_rrc.ue_context_release_command(source_ctx->du->assoc_id, &cmd);
+    } else { // N2/Xn case
+      // the UE came back, we are done on the target CU
+      LOG_I(NR_RRC, "handover for UE %d/RNTI %04x complete!\n", UE->rrc_ue_id, UE->rnti);
+      free_ho_ctx(UE->ho_context);
+      UE->ho_context = NULL;
+      // TODO send answer
+    }
+  }
 }
 //-----------------------------------------------------------------------------
 int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
