@@ -915,6 +915,8 @@ static int ngap_gNB_handle_pdusession_setup_request(sctp_assoc_t assoc_id, uint3
   NGAP_RAN_UE_NGAP_ID_t         ran_ue_ngap_id;
   ngap_gNB_amf_data_t          *amf_desc_p       = NULL;
 
+  LOG_W(NGAP, "in ngap_gNB_handle_pdusession_setup_request\n");
+
   NGAP_PDUSessionResourceSetupRequest_t     *container;
   NGAP_PDUSessionResourceSetupRequestIEs_t  *ie;
   DevAssert(pdu != NULL);
@@ -955,13 +957,21 @@ static int ngap_gNB_handle_pdusession_setup_request(sctp_assoc_t assoc_id, uint3
   msg->gNB_ue_ngap_id = ue_desc_p->gNB_ue_ngap_id;
   msg->amf_ue_ngap_id = ue_desc_p->amf_ue_ngap_id;
 
+   LOG_W(NGAP, "dhlTest: modify the code to adapt the icsCore&& UEAggregateMaximumBitRate\n");
+  
   /* UE Aggregated Maximum Bitrate */
-  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PDUSessionResourceSetupRequestIEs_t, ie, container,
+  /*NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PDUSessionResourceSetupRequestIEs_t, ie, container,
                          NGAP_ProtocolIE_ID_id_UEAggregateMaximumBitRate, true);
   asn_INTEGER2ulong(&(ie->value.choice.UEAggregateMaximumBitRate.uEAggregateMaximumBitRateUL),
                     &msg->ueAggMaxBitRateUplink);
   asn_INTEGER2ulong(&(ie->value.choice.UEAggregateMaximumBitRate.uEAggregateMaximumBitRateDL),
-                    &msg->ueAggMaxBitRateDownlink);
+                    &msg->ueAggMaxBitRateDownlink);*/
+  
+  msg->ueAggMaxBitRateDownlink = 1073741824;  // new added 
+
+  msg->ueAggMaxBitRateUplink = 1073741824;       //new added                     
+
+  LOG_W(NGAP, "2 \n");                    
 
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PDUSessionResourceSetupRequestIEs_t, ie, container,
                          NGAP_ProtocolIE_ID_id_PDUSessionResourceSetupListSUReq, true);
@@ -984,6 +994,8 @@ static int ngap_gNB_handle_pdusession_setup_request(sctp_assoc_t assoc_id, uint3
     allocCopy(&msg->pdusession_setup_params[i].pdusessionTransfer, item_p->pDUSessionResourceSetupRequestTransfer);
   }
     itti_send_msg_to_task(TASK_RRC_GNB, ue_desc_p->gNB_instance->instance, message_p);
+
+    LOG_W(NGAP, "3 \n");  
 
   return 0;
 }
@@ -1353,6 +1365,7 @@ int ngap_gNB_handle_message(sctp_assoc_t assoc_id, int32_t stream, const uint8_t
   /* No handler present.
    * This can mean not implemented or no procedure for gNB (wrong direction).
    */
+   LOG_W(RRC, "SCTP_DATA_IND from core ::procedurecode = %d\n", pdu.choice.initiatingMessage->procedureCode);
   if (ngap_messages_callback[pdu.choice.initiatingMessage->procedureCode][pdu.present - 1] == NULL) {
     NGAP_ERROR("[SCTP %u] No handler for procedureCode %ld in %s\n", assoc_id, pdu.choice.initiatingMessage->procedureCode, ngap_direction2String(pdu.present - 1));
     ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_NGAP_NGAP_PDU, &pdu);

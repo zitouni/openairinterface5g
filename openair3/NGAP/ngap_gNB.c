@@ -284,7 +284,7 @@ void *ngap_gNB_process_itti_msg(void *notUsed) {
   itti_receive_msg(TASK_NGAP, &received_msg);
   if (received_msg) {
     instance_t instance = ITTI_MSG_DESTINATION_INSTANCE(received_msg);
-    LOG_D(RRC, "Received message %s\n", ITTI_MSG_NAME(received_msg));
+    LOG_D(RRC, "Received message %s in func ngap_gNB_process_itti_msg\n", ITTI_MSG_NAME(received_msg));
     switch (ITTI_MSG_ID(received_msg)) {
       case TERMINATE_MESSAGE:
         NGAP_WARN(" *** Exiting NGAP thread\n");
