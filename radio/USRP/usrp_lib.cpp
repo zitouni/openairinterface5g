@@ -1044,7 +1044,10 @@ extern "C" {
     LOG_I(HW, "openair0_cfg[0].sdr_addrs == '%s'\n", openair0_cfg[0].sdr_addrs);
     LOG_I(HW, "openair0_cfg[0].clock_source == '%d' (internal = %d, external = %d)\n", openair0_cfg[0].clock_source,internal,external);
     usrp_state_t *s ;
+    LOG_E(HW, "dhlTest: change RF port0 to port1 for test! should be changed back!!!\n");
     int choffset = 0;
+    //int choffset = 1;
+    
 
     if ( device->priv == NULL) {
       s=(usrp_state_t *)calloc(1, sizeof(usrp_state_t));
