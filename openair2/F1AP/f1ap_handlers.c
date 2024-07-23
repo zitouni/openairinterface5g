@@ -87,7 +87,7 @@ static F1AP_F1AP_PDU_t *f1ap_decode_pdu(const uint8_t *const buffer, uint32_t le
   F1AP_F1AP_PDU_t *pdu = NULL;
   asn_dec_rval_t dec_ret = aper_decode(&st, &asn_DEF_F1AP_F1AP_PDU, (void **)&pdu, buffer, length, 0, 0);
 
-  if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
+  if (LOG_DEBUGFLAG(DEBUG_ASN1)) {  
     LOG_E(F1AP, "----------------- ASN1 DECODER PRINT START----------------- \n");
     xer_fprint(stdout, &asn_DEF_F1AP_F1AP_PDU, pdu);
     LOG_E(F1AP, "----------------- ASN1 DECODER PRINT END ----------------- \n");
