@@ -2295,7 +2295,7 @@ static void rrc_CU_process_ue_context_setup_response(MessageDef *msg_p, instance
   }
 }
 
-static void rrc_CU_process_ue_context_release_request(MessageDef *msg_p)
+static void rrc_CU_process_ue_context_release_request(MessageDef *msg_p, sctp_assoc_t assoc_id)
 {
   const int instance = 0;
   f1ap_ue_context_release_req_t *req = &F1AP_UE_CONTEXT_RELEASE_REQ(msg_p);
@@ -2304,6 +2304,37 @@ static void rrc_CU_process_ue_context_release_request(MessageDef *msg_p)
   if (!ue_context_p) {
     LOG_E(RRC, "could not find UE context for CU UE ID %u, aborting transaction\n", req->gNB_CU_ue_id);
     return;
+  }
+
+  gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+  if (UE->ho_context != NULL) {
+    nr_ho_source_cu_t *source_ctx = UE->ho_context->source;
+    nr_ho_target_cu_t *target_ctx = UE->ho_context->target;
+    bool from_source_du = source_ctx && source_ctx->du->assoc_id == assoc_id;
+    if (from_source_du && target_ctx && target_ctx->reconfig_complete) {
+      // we received release request from the source DU, but the UE already
+      // acknowledged handover with reconfiguration complete, simply tell the
+      // DU to release; don't free ho_ctx to properly interpret release
+      // complete (this is to avoid that handover is complete but the source DU
+      // asks to release, which in the normal chain would lead to a complete
+      // release of the DU, which is likely not wanted)
+      RETURN_IF_INVALID_ASSOC_ID(source_ctx->du->assoc_id);
+      f1ap_ue_context_release_cmd_t cmd = {
+          .gNB_CU_ue_id = UE->rrc_ue_id,
+          .gNB_DU_ue_id = source_ctx->du_ue_id,
+          .cause = F1AP_CAUSE_RADIO_NETWORK,
+          .cause_value = 5, // 5 = F1AP_CauseRadioNetwork_interaction_with_other_procedure
+          .srb_id = DCCH,
+      };
+      rrc->mac_rrc.ue_context_release_command(source_ctx->du->assoc_id, &cmd);
+      return;
+    }
+    if (from_source_du && target_ctx && !target_ctx->reconfig_complete) {
+      LOG_W(NR_RRC, "UE %d: received UE context release request from source DU, but handover not complete, ignoring request\n", UE->rrc_ue_id);
+      return;
+    }
+    // if we receive the release request from the target DU (regardless if
+    // successful), we assume it is "genuine" and ask the AMF to release
   }
 
   /* TODO: marshall types correctly */
@@ -2835,7 +2866,7 @@ void *rrc_gnb_task(void *args_p) {
         break;
 
       case F1AP_UE_CONTEXT_RELEASE_REQ:
-        rrc_CU_process_ue_context_release_request(msg_p);
+        rrc_CU_process_ue_context_release_request(msg_p, msg_p->ittiMsgHeader.originInstance);
         break;
 
       case F1AP_UE_CONTEXT_RELEASE_COMPLETE:
