@@ -158,4 +158,6 @@ void rrc_gNB_generate_UeContextModificationRequest(const gNB_RRC_INST *rrc,
                                                    int n_rel_drbs,
                                                    const f1ap_drb_to_be_released_t *rel_drbs);
 
+void free_ho_ctx(nr_handover_context_t *ho_ctx);
+
 #endif

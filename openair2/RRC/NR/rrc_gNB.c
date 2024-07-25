@@ -259,6 +259,29 @@ static void rrc_gNB_CU_DU_init(gNB_RRC_INST *rrc)
   cu_init_f1_ue_data();
 }
 
+typedef enum { HO_CTX_BOTH, HO_CTX_SOURCE, HO_CTX_TARGET } ho_ctx_type_t;
+static nr_handover_context_t *alloc_ho_ctx(ho_ctx_type_t type)
+{
+  nr_handover_context_t *ho_ctx = calloc(1, sizeof(*ho_ctx));
+  AssertFatal(ho_ctx != NULL, "out of memory\n");
+  if (type == HO_CTX_SOURCE || type == HO_CTX_BOTH) {
+    ho_ctx->source = calloc(1, sizeof(*ho_ctx->source));
+    AssertFatal(ho_ctx->source != NULL, "out of memory\n");
+  }
+  if (type == HO_CTX_TARGET || type == HO_CTX_BOTH) {
+    ho_ctx->target = calloc(1, sizeof(*ho_ctx->target));
+    AssertFatal(ho_ctx->target != NULL, "out of memory\n");
+  }
+  return ho_ctx;
+}
+
+void free_ho_ctx(nr_handover_context_t *ho_ctx)
+{
+  free(ho_ctx->source);
+  free(ho_ctx->target);
+  free(ho_ctx);
+}
+
 void openair_rrc_gNB_configuration(gNB_RRC_INST *rrc, gNB_RrcConfigurationReq *configuration)
 {
   AssertFatal(rrc != NULL, "RC.nrrrc not initialized!");
