@@ -882,6 +882,11 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
         reset_ul_harq_list(UE_scheduling_control);
         process_addmod_bearers_cellGroupConfig(&UE->UE_sched_ctrl, ra->CellGroup->rlc_BearerToAddModList);
         nr_clear_ra_proc(ra);
+
+        /* TODO check if we need processing timer? */
+        //UE->apply_cellgroup = true;
+        //nr_mac_apply_cellgroup(gNB_mac, UE, frameP,  slotP);
+        //nr_mac_enable_ue_rrc_processing_timer(gNB_mac, UE, /* apply_cellGroup = */ true);
       } else {
         LOG_D(NR_MAC, "[RAPROC] Received Msg3:\n");
         for (uint32_t k = 0; k < sdu_lenP; k++) {

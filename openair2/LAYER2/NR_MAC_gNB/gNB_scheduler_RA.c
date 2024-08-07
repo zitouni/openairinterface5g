@@ -1481,7 +1481,9 @@ static void nr_generate_Msg2(module_id_t module_idP,
                               ? NR_RRC_SETUP_DELAY_MS + NR_RRC_BWP_SWITCHING_DELAY_MS
                               : NR_RRC_SETUP_DELAY_MS;
       int delay = nr_mac_get_reconfig_delay_slots(ra->DL_BWP.scs, delay_ms);
-      nr_mac_interrupt_ue_transmission(RC.nrmac[module_idP], UE, FOLLOW_INSYNC, delay);
+      /* TODO check if the UE should apply configuration before sync */
+      interrupt_followup_action_t action = UE->reconfigCellGroup ? FOLLOW_INSYNC_RECONFIG : FOLLOW_INSYNC;
+      nr_mac_interrupt_ue_transmission(RC.nrmac[module_idP], UE, action, delay);
     }
   }
 
