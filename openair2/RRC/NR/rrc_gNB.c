@@ -1357,7 +1357,12 @@ static void rrc_handle_RRCReestablishmentRequest(gNB_RRC_INST *rrc,
   const long physCellId = req->ue_Identity.physCellId;
   long ngap_cause = NGAP_CAUSE_RADIO_NETWORK_UNSPECIFIED; /* cause in case of NGAP release req */
   rrc_gNB_ue_context_t *ue_context_p = NULL;
-  LOG_I(NR_RRC, "UE %04x physCellId %ld NR_RRCReestablishmentRequest cause %s\n", msg->crnti, physCellId, scause);
+  LOG_I(NR_RRC,
+        "Reestablishment RNTI %04x req C-RNTI %04lx physCellId %ld cause %s\n",
+        msg->crnti,
+        req->ue_Identity.c_RNTI,
+        physCellId,
+        scause);
 
   const nr_rrc_du_container_t *du = get_du_by_assoc_id(rrc, assoc_id);
   if (du == NULL) {
@@ -1392,13 +1397,69 @@ static void rrc_handle_RRCReestablishmentRequest(gNB_RRC_INST *rrc,
   rnti_t old_rnti = req->ue_Identity.c_RNTI;
   ue_context_p = rrc_gNB_get_ue_context_by_rnti(rrc, assoc_id, old_rnti);
   if (ue_context_p == NULL) {
-    LOG_E(NR_RRC, "NR_RRCReestablishmentRequest without UE context, fallback to RRC setup\n");
-    goto fallback_rrc_setup;
+    ue_context_p = rrc_gNB_get_ue_context_by_rnti_any_du(rrc, old_rnti);
+    if (ue_context_p == NULL) {
+      LOG_E(NR_RRC, "NR_RRCReestablishmentRequest without UE context, fallback to RRC setup\n");
+      AssertFatal(false, "should not happen in the current implementation\n");
+      goto fallback_rrc_setup;
+    }
   }
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
 
+  /* should check phys cell ID to identify the correct cell */
   const f1ap_served_cell_info_t *cell_info = &du->setup_req->cell[0].info;
-  if (physCellId != cell_info->nr_pci) {
+  const f1ap_served_cell_info_t *previous_cell_info = get_cell_information_by_phycellId(physCellId);
+
+  nr_ho_source_cu_t *source_ctx = UE->ho_context ? UE->ho_context->source : NULL;
+  DevAssert(!source_ctx || source_ctx->du->setup_req->num_cells_available == 1);
+  nr_ho_target_cu_t *target_ctx = UE->ho_context ? UE->ho_context->target : NULL;
+  DevAssert(!target_ctx || target_ctx->du->setup_req->num_cells_available == 1);
+
+  bool ho_reestab_on_source = source_ctx && previous_cell_info->nr_cellid == source_ctx->du->setup_req->cell[0].info.nr_cellid;
+  bool ho_reestab_on_target = target_ctx && previous_cell_info->nr_cellid == target_ctx->du->setup_req->cell[0].info.nr_cellid;
+
+  AssertFatal(!UE->ho_context || ho_reestab_on_source || ho_reestab_on_target, "impossible/buggy\n");
+
+  LOG_I(NR_RRC,
+        "found corresponding UE ID %d reestab_on_source %d reestab_on_target %d\n",
+        UE->rrc_ue_id,
+        ho_reestab_on_source,
+        ho_reestab_on_target);
+  if (ho_reestab_on_source) {
+    /* the UE came back on the source DU while doing handover, release at
+     * target DU and and update the association to the initial DU one */
+    DevAssert(target_ctx != NULL); // hardcode F1 case
+    f1ap_ue_context_release_cmd_t cmd = {
+        .gNB_CU_ue_id = UE->rrc_ue_id,
+        .gNB_DU_ue_id = target_ctx->du_ue_id,
+        .cause = F1AP_CAUSE_RADIO_NETWORK, // better
+        .cause_value = 5, // 5 = F1AP_CauseRadioNetwork_interaction_with_other_procedure
+        .srb_id = DCCH,
+    };
+    rrc->mac_rrc.ue_context_release_command(target_ctx->du->assoc_id, &cmd);
+
+    /* UE->ho_context will be freed after the release message */
+
+    f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
+    ue_data.du_assoc_id = source_ctx->du->assoc_id;
+    cu_remove_f1_ue_data(UE->rrc_ue_id);
+    cu_add_f1_ue_data(UE->rrc_ue_id, &ue_data);
+  } else if (ho_reestab_on_target) {
+    /* the UE came back on the target DU while doing handover, release at the
+     * source and consider the handover completed */
+    target_ctx->reconfig_complete = true; /* as if it was successful */
+    if (source_ctx != NULL) {
+      f1ap_ue_context_release_cmd_t cmd = {
+          .gNB_CU_ue_id = UE->rrc_ue_id,
+          .gNB_DU_ue_id = source_ctx->du_ue_id,
+          .cause = F1AP_CAUSE_RADIO_NETWORK,
+          .cause_value = 5, // 5 = F1AP_CauseRadioNetwork_interaction_with_other_procedure
+          .srb_id = DCCH,
+      };
+      rrc->mac_rrc.ue_context_release_command(source_ctx->du->assoc_id, &cmd);
+    }
+    /* ho_context will be freed once we have ue_context_release_ack */
+  } else if (physCellId != cell_info->nr_pci) {
     /* UE was moving from previous cell so quickly that RRCReestablishment for previous cell was received in this cell */
     LOG_I(NR_RRC,
           "RRC Reestablishment Request from different physCellId (%ld) than current physCellId (%d), fallback to RRC setup\n",
