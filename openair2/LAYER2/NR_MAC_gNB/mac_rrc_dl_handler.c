@@ -479,16 +479,18 @@ static NR_UE_info_t *create_new_UE(gNB_MAC_INST *mac, uint32_t cu_id)
   const NR_ServingCellConfigCommon_t *scc = mac->common_channels[CC_id].ServingCellConfigCommon;
   const NR_ServingCellConfig_t *sccd = mac->common_channels[CC_id].pre_ServingCellConfig;
   NR_CellGroupConfig_t *cellGroupConfig = get_initial_cellGroupConfig(UE->uid, scc, sccd, &mac->radio_config);
-  // note: we don't pass it to add_new_nr_ue() because the internal logic is
-  // such that we then assume having received the ack of Msg4 (which is not the
-  // case)
+  cellGroupConfig->spCellConfig->reconfigurationWithSync = get_reconfiguration_with_sync(UE->rnti, UE->uid, scc);
+  // note: we don't pass the cellGroupConfig to add_new_nr_ue() because we need
+  // the uid to create the CellGroupConfig (which is in the UE context created
+  // by add_new_nr_ue(); it's a kind of chicken-and-egg problem), so below we
+  // complete the UE context with the information that add_new_nr_ue() would
+  // have added
   UE->Msg4_ACKed = true;
   UE->CellGroup = cellGroupConfig;
-  UE->CellGroup->spCellConfig->reconfigurationWithSync = get_reconfiguration_with_sync(UE->rnti, UE->uid, scc);
 
   nr_rlc_activate_srb0(UE->rnti, UE, NULL);
-
   nr_mac_prepare_ra_ue(mac, rnti, UE->CellGroup);
+  /* SRB1 is added to RLC and MAC in the handler later */
   return UE;
 }
 
