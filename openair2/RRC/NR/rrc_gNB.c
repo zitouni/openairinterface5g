@@ -2257,6 +2257,13 @@ static void rrc_CU_process_ue_context_setup_response(MessageDef *msg_p, instance
 
     // TODO make this a fptr: F1: trigger reconfig directly, N2/Xn: pass to source CU
     nr_rrc_trigger_f1_ho_rrc_reconfiguration(rrc, UE, buffer, size);
+    /* TODO hack: belongs into f1 function above */
+  if (resp->drbs_to_be_setup_length > 0) {
+    // AssertFatal() should be same number as active bearers?
+    store_du_f1u_tunnel(resp->drbs_to_be_setup, resp->drbs_to_be_setup_length, UE);
+    /* PDCP Reestablishment of DRBs according to 5.3.5.6.5 of 3GPP TS 38.331 (over E1) */
+    cuup_notify_reestablishment(rrc, UE);
+  }
   }
 }
 
