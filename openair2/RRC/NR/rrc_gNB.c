@@ -1429,6 +1429,7 @@ static void rrc_handle_RRCReestablishmentRequest(gNB_RRC_INST *rrc,
     /* the UE came back on the source DU while doing handover, release at
      * target DU and and update the association to the initial DU one */
     DevAssert(target_ctx != NULL); // hardcode F1 case
+    //DevAssert(physCellId == cell_info->nr_pci);
     f1ap_ue_context_release_cmd_t cmd = {
         .gNB_CU_ue_id = UE->rrc_ue_id,
         .gNB_DU_ue_id = target_ctx->du_ue_id,
@@ -1448,6 +1449,7 @@ static void rrc_handle_RRCReestablishmentRequest(gNB_RRC_INST *rrc,
     /* the UE came back on the target DU while doing handover, release at the
      * source and consider the handover completed */
     target_ctx->reconfig_complete = true; /* as if it was successful */
+    //DevAssert(physCellId == cell_info->nr_pci);
     if (source_ctx != NULL) {
       f1ap_ue_context_release_cmd_t cmd = {
           .gNB_CU_ue_id = UE->rrc_ue_id,
