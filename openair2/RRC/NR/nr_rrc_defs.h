@@ -133,7 +133,6 @@ typedef struct nr_ho_target_cu {
   const nr_rrc_du_container_t *du;
   uint32_t du_ue_id;
   rnti_t new_rnti;
-  bool reconfig_complete;
   // TODO fptr for ue ctx setup success
   // TODO fptr for ue ctx setup failure
   // TODO fptr for rrc reconfig

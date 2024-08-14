@@ -1931,9 +1931,8 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
   }
 
   if (UE->ho_context != NULL) {
-    LOG_A(NR_RRC, "UE %d Handover: received RRC Reconfiguration Complete\n", UE->rrc_ue_id);
+    LOG_A(NR_RRC, "handover for UE %d/RNTI %04x complete!\n", UE->rrc_ue_id, UE->rnti);
     DevAssert(UE->ho_context->target != NULL);
-    UE->ho_context->target->reconfig_complete = true;
 
     // TODO make fptr
     nr_ho_source_cu_t *source_ctx = UE->ho_context->source;
@@ -1951,11 +1950,10 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
       rrc->mac_rrc.ue_context_release_command(source_ctx->du->assoc_id, &cmd);
     } else { // N2/Xn case
       // the UE came back, we are done on the target CU
-      LOG_I(NR_RRC, "handover for UE %d/RNTI %04x complete!\n", UE->rrc_ue_id, UE->rnti);
-      free_ho_ctx(UE->ho_context);
-      UE->ho_context = NULL;
       // TODO send answer
     }
+    free_ho_ctx(UE->ho_context);
+    UE->ho_context = NULL;
   }
 }
 //-----------------------------------------------------------------------------
@@ -2454,10 +2452,6 @@ static void rrc_CU_process_ue_context_release_complete(MessageDef *msg_p)
      * otherwise, it might be CU that requested release on a DU during normal
      * operation (i.e, handover) */
     rrc_remove_ue(RC.nrrrc[0], ue_context_p);
-  } else {
-    LOG_A(NR_RRC, "handover for UE %d/RNTI %04x complete!\n", UE->rrc_ue_id, UE->rnti);
-    free_ho_ctx(UE->ho_context);
-    UE->ho_context = NULL;
   }
 }
 
