@@ -1425,7 +1425,11 @@ static void rrc_handle_RRCReestablishmentRequest(gNB_RRC_INST *rrc,
         UE->rrc_ue_id,
         ho_reestab_on_source,
         ho_reestab_on_target);
-  if (ho_reestab_on_source) {
+  if (req->reestablishmentCause == NR_ReestablishmentCause_handoverFailure) {
+    /* the UE came back, handover is not possible; need to check which DU this
+     * in, and cross-check spec on what to do? */
+    AssertFatal(false, "not implemented\n");
+  } if (ho_reestab_on_source) {
     /* the UE came back on the source DU while doing handover, release at
      * target DU and and update the association to the initial DU one */
     DevAssert(target_ctx != NULL); // hardcode F1 case
