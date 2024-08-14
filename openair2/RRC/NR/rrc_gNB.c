@@ -2355,6 +2355,10 @@ static void rrc_CU_process_ue_context_release_complete(MessageDef *msg_p)
      * otherwise, it might be CU that requested release on a DU during normal
      * operation (i.e, handover) */
     rrc_remove_ue(RC.nrrrc[0], ue_context_p);
+  } else {
+    LOG_A(NR_RRC, "handover for UE %d/RNTI %04x complete!\n", UE->rrc_ue_id, UE->rnti);
+    free_ho_ctx(UE->ho_context);
+    UE->ho_context = NULL;
   }
 }
 
