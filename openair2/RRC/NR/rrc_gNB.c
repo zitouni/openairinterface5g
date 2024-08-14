@@ -2393,6 +2393,7 @@ static void rrc_CU_process_ue_context_release_request(MessageDef *msg_p, sctp_as
       return;
     }
     if (from_source_du && target_ctx && !target_ctx->reconfig_complete) {
+      // TODO: need to think what this means, and do it anyway?
       LOG_W(NR_RRC, "UE %d: received UE context release request from source DU, but handover not complete, ignoring request\n", UE->rrc_ue_id);
       return;
     }
