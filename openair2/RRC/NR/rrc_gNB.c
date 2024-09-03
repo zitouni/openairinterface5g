@@ -2377,15 +2377,11 @@ static void rrc_CU_process_ue_context_release_request(MessageDef *msg_p, sctp_as
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
   if (UE->ho_context != NULL) {
     nr_ho_source_cu_t *source_ctx = UE->ho_context->source;
-    nr_ho_target_cu_t *target_ctx = UE->ho_context->target;
     bool from_source_du = source_ctx && source_ctx->du->assoc_id == assoc_id;
-    if (from_source_du && target_ctx && target_ctx->reconfig_complete) {
-      // we received release request from the source DU, but the UE already
-      // acknowledged handover with reconfiguration complete, simply tell the
-      // DU to release; don't free ho_ctx to properly interpret release
-      // complete (this is to avoid that handover is complete but the source DU
-      // asks to release, which in the normal chain would lead to a complete
-      // release of the DU, which is likely not wanted)
+    if (from_source_du) {
+      // we received release request from the source DU, but HO is still
+      // ongoing; free the UE, and remove the HO context.
+      LOG_W(NR_RRC, "UE %d: release request from source DU ID %ld, ignoring request\n", UE->rrc_ue_id, source_ctx->du->setup_req->gNB_DU_id);
       RETURN_IF_INVALID_ASSOC_ID(source_ctx->du->assoc_id);
       f1ap_ue_context_release_cmd_t cmd = {
           .gNB_CU_ue_id = UE->rrc_ue_id,
@@ -2394,16 +2390,15 @@ static void rrc_CU_process_ue_context_release_request(MessageDef *msg_p, sctp_as
           .cause_value = 5, // 5 = F1AP_CauseRadioNetwork_interaction_with_other_procedure
           .srb_id = DCCH,
       };
-      rrc->mac_rrc.ue_context_release_command(source_ctx->du->assoc_id, &cmd);
-      return;
-    }
-    if (from_source_du && target_ctx && !target_ctx->reconfig_complete) {
-      // TODO: need to think what this means, and do it anyway?
-      LOG_W(NR_RRC, "UE %d: received UE context release request from source DU, but handover not complete, ignoring request\n", UE->rrc_ue_id);
+      rrc->mac_rrc.ue_context_release_command(assoc_id, &cmd);
+      free_ho_ctx(UE->ho_context);
+      UE->ho_context = NULL;
       return;
     }
     // if we receive the release request from the target DU (regardless if
     // successful), we assume it is "genuine" and ask the AMF to release
+    free_ho_ctx(UE->ho_context);
+    UE->ho_context = NULL;
   }
 
   /* TODO: marshall types correctly */
