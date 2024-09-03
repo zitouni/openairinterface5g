@@ -1449,10 +1449,12 @@ static void rrc_handle_RRCReestablishmentRequest(gNB_RRC_INST *rrc,
     ue_data.du_assoc_id = source_ctx->du->assoc_id;
     cu_remove_f1_ue_data(UE->rrc_ue_id);
     cu_add_f1_ue_data(UE->rrc_ue_id, &ue_data);
+    free_ho_ctx(UE->ho_context);
+    UE->ho_context = NULL;
   } else if (ho_reestab_on_target) {
     /* the UE came back on the target DU while doing handover, release at the
      * source and consider the handover completed */
-    target_ctx->reconfig_complete = true; /* as if it was successful */
+    LOG_A(NR_RRC, "handover for UE %d/RNTI %04x complete!\n", UE->rrc_ue_id, UE->rnti);
     //DevAssert(physCellId == cell_info->nr_pci);
     if (source_ctx != NULL) {
       f1ap_ue_context_release_cmd_t cmd = {
@@ -1464,7 +1466,8 @@ static void rrc_handle_RRCReestablishmentRequest(gNB_RRC_INST *rrc,
       };
       rrc->mac_rrc.ue_context_release_command(source_ctx->du->assoc_id, &cmd);
     }
-    /* ho_context will be freed once we have ue_context_release_ack */
+    free_ho_ctx(UE->ho_context);
+    UE->ho_context = NULL;
   } else if (physCellId != cell_info->nr_pci) {
     /* UE was moving from previous cell so quickly that RRCReestablishment for previous cell was received in this cell */
     LOG_I(NR_RRC,
