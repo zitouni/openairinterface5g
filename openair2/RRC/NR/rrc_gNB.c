@@ -1530,7 +1530,7 @@ static void process_Periodical_Measurement_Report(rrc_gNB_ue_context_t *ue_conte
   measurementReport->criticalExtensions.choice.measurementReport = NULL;
 }
 
-static void process_Event_Based_Measurement_Report(NR_ReportConfigNR_t *report, NR_MeasurementReport_t *measurementReport)
+static void process_Event_Based_Measurement_Report(gNB_RRC_UE_t *ue, NR_ReportConfigNR_t *report, NR_MeasurementReport_t *measurementReport)
 {
   NR_EventTriggerConfig_t *event_triggered = report->reportType.choice.eventTriggered;
 
@@ -1598,6 +1598,10 @@ static void process_Event_Based_Measurement_Report(NR_ReportConfigNR_t *report, 
                   < (neighbourCellRSRP - servingCellRSRP))) {
             LOG_D(NR_RRC, "HO LOG: Trigger N2 HO for the neighbour gnb: %u cell: %lu\n", neighbour->gNB_ID, neighbour->nrcell_id);
           }
+        } else if (neighbour_cell_du_context && neighbour) {
+          nr_HO_F1_trigger_telnet(RC.nrrrc[0], ue->rrc_ue_id);
+        } else {
+          LOG_W(NR_RRC, "UE %d: received A3 event for stronger neighbor PCI %d, but no such neighbour in configuration\n", ue->rrc_ue_id, neighbourCellId);
         }
       }
 
@@ -1657,12 +1661,10 @@ static void rrc_gNB_process_MeasurementReport(rrc_gNB_ue_context_t *ue_context, 
   if (report_config->choice.reportConfigNR->reportType.present == NR_ReportConfigNR__reportType_PR_periodical)
     return process_Periodical_Measurement_Report(ue_context, measurementReport);
 
-  if (report_config->choice.reportConfigNR->reportType.present != NR_ReportConfigNR__reportType_PR_eventTriggered) {
-    LOG_D(NR_RRC, "Incoming Report Type: %d is not supported! \n", report_config->choice.reportConfigNR->reportType.present);
-    return;
-  }
+  if (report_config->choice.reportConfigNR->reportType.present == NR_ReportConfigNR__reportType_PR_eventTriggered)
+    return process_Event_Based_Measurement_Report(&ue_context->ue_context, report_config->choice.reportConfigNR, measurementReport);
 
-  process_Event_Based_Measurement_Report(report_config->choice.reportConfigNR, measurementReport);
+  LOG_E(NR_RRC, "Incoming Report Type: %d is not supported! \n", report_config->choice.reportConfigNR->reportType.present);
 }
 
 static int handle_rrcReestablishmentComplete(const protocol_ctxt_t *const ctxt_pP,
