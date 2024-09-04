@@ -1347,6 +1347,20 @@ static const char *get_reestab_cause(NR_ReestablishmentCause_t c)
   return "UNKNOWN Failure (ASN.1 decoder error?)";
 }
 
+static rrc_gNB_ue_context_t *rrc_gNB_get_ue_context_source_cell(gNB_RRC_INST *rrc_instance_pP, sctp_assoc_t assoc_id, rnti_t rntiP)
+{
+  rrc_gNB_ue_context_t *ue_context_p;
+  RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &rrc_instance_pP->rrc_ue_head) {
+    gNB_RRC_UE_t *ue = &ue_context_p->ue_context;
+    if (!ue->ho_context || !ue->ho_context->source)
+      continue;
+    nr_ho_source_cu_t *source_ctx = ue->ho_context->source;
+    if (source_ctx->old_rnti == rntiP && source_ctx->du->assoc_id == assoc_id)
+      return ue_context_p;
+  }
+  return NULL;
+}
+
 static void rrc_handle_RRCReestablishmentRequest(gNB_RRC_INST *rrc,
                                                  sctp_assoc_t assoc_id,
                                                  const NR_RRCReestablishmentRequest_IEs_t *req,
@@ -1397,7 +1411,8 @@ static void rrc_handle_RRCReestablishmentRequest(gNB_RRC_INST *rrc,
   rnti_t old_rnti = req->ue_Identity.c_RNTI;
   ue_context_p = rrc_gNB_get_ue_context_by_rnti(rrc, assoc_id, old_rnti);
   if (ue_context_p == NULL) {
-    ue_context_p = rrc_gNB_get_ue_context_by_rnti_any_du(rrc, old_rnti);
+    ue_context_p = rrc_gNB_get_ue_context_source_cell(rrc, assoc_id, old_rnti);
+    //ue_context_p = rrc_gNB_get_ue_context_by_rnti_any_du(rrc, old_rnti);
     if (ue_context_p == NULL) {
       LOG_E(NR_RRC, "NR_RRCReestablishmentRequest without UE context, fallback to RRC setup\n");
       AssertFatal(false, "should not happen in the current implementation\n");
@@ -1425,15 +1440,12 @@ static void rrc_handle_RRCReestablishmentRequest(gNB_RRC_INST *rrc,
         UE->rrc_ue_id,
         ho_reestab_on_source,
         ho_reestab_on_target);
-  if (req->reestablishmentCause == NR_ReestablishmentCause_handoverFailure) {
-    /* the UE came back, handover is not possible; need to check which DU this
-     * in, and cross-check spec on what to do? */
-    AssertFatal(false, "not implemented\n");
-  } if (ho_reestab_on_source) {
+  if (req->reestablishmentCause == NR_ReestablishmentCause_handoverFailure || ho_reestab_on_source) {
     /* the UE came back on the source DU while doing handover, release at
      * target DU and and update the association to the initial DU one */
+    LOG_W(NR_RRC, "handover for UE %d/RNTI %04x failed, rollback to original cell\n", UE->rrc_ue_id, UE->rnti);
+    /* TODO fptr for handover cancel? */
     DevAssert(target_ctx != NULL); // hardcode F1 case
-    //DevAssert(physCellId == cell_info->nr_pci);
     f1ap_ue_context_release_cmd_t cmd = {
         .gNB_CU_ue_id = UE->rrc_ue_id,
         .gNB_DU_ue_id = target_ctx->du_ue_id,
@@ -1443,12 +1455,12 @@ static void rrc_handle_RRCReestablishmentRequest(gNB_RRC_INST *rrc,
     };
     rrc->mac_rrc.ue_context_release_command(target_ctx->du->assoc_id, &cmd);
 
-    /* UE->ho_context will be freed after the release message */
-
+    /* update to old DU assoc id -- RNTI + secondary DU UE ID further below */
     f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
     ue_data.du_assoc_id = source_ctx->du->assoc_id;
     cu_remove_f1_ue_data(UE->rrc_ue_id);
     cu_add_f1_ue_data(UE->rrc_ue_id, &ue_data);
+    /* free HO context */
     free_ho_ctx(UE->ho_context);
     UE->ho_context = NULL;
   } else if (ho_reestab_on_target) {
