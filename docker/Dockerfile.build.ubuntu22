@@ -7,11 +7,7 @@
 # * except in compliance with the License.
 # * You may obtain a copy of the License at
 # *
-# *      http://www.openairinterface.org/?page_id=698
-# *
-# * Unless required by applicable law or agreed to in writing, software
-# * distributed under the License is distributed on an "AS IS" BASIS,
-# * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# *   r express or implied.
 # * See the License for the specific language governing permissions and
 # * limitations under the License.
 # *-------------------------------------------------------------------------------
@@ -25,39 +21,71 @@
 #
 #---------------------------------------------------------------------
 
-    FROM ran-base:latest AS ran-build
-    ARG BUILD_OPTION
-    
-    RUN rm -Rf /oai-ran
-    WORKDIR /oai-ran
-    COPY . .
-    
-    # build all targets so final targets can be created afterwards
-    # RUN /bin/sh oaienv && \
-    #     cd cmake_targets && \
-    #     mkdir -p log && \
-    #     ./build_oai -c --ninja \
-    #       --eNB --gNB --RU --UE --nrUE \
-    #       --build-lib "telnetsrv enbscope uescope nrscope" \
-    #       -w USRP -t Ethernet \
-    #       --build-e2 --cmake-opt -DXAPP_MULTILANGUAGE=OFF \
-    #       --noavx512 \
-    #       --cmake-opt -DCMAKE_C_FLAGS="-Werror" --cmake-opt -DCMAKE_CXX_FLAGS="-Werror" $BUILD_OPTION && \
-    #     # Mainly to see if the sanitize option was perfectly executed
-    #     echo "---- ldd on executables ----" && \
-    #     ldd ran_build/build/*softmodem* ran_build/build/nr-cuup ran_build/build/oairu && \
-    #     echo "---- ldd on shared libraries ----" && \
-    #     ldd ran_build/build/*.so
-
-    RUN /bin/sh oaienv && \
-    cd cmake_targets && \
-    mkdir -p log && \
-    ./build_oai -c --ninja \
-      --eNB --gNB --RU --UE --nrUE \
-      --build-lib "telnetsrv enbscope uescope nrscope" \
-      -w USRP -t Ethernet \
-      --build-e2 --cmake-opt -DXAPP_MULTILANGUAGE=OFF \
-      --noavx512 \
-      $BUILD_OPTION && \
-    echo "Build completed successfully"
-    
+  FROM ran-base:latest AS ran-build
+  ARG BUILD_OPTION
+  
+  RUN rm -Rf /oai-ran
+  WORKDIR /oai-ran
+  COPY . .
+  
+  # build all targets so final targets can be created afterwards
+  # RUN /bin/sh oaienv && \
+  #     cd cmake_targets && \
+  #     mkdir -p log && \
+  #     ./build_oai -c --ninja \
+  #       --eNB --gNB --RU --UE --nrUE \
+  #       --build-lib "telnetsrv enbscope uescope nrscope" \
+  #       -w USRP -t Ethernet \
+  #       --build-e2 --cmake-opt -DXAPP_MULTILANGUAGE=OFF \
+  #       --noavx512 \
+  #       --cmake-opt -DCMAKE_C_FLAGS="-Werror" --cmake-opt -DCMAKE_CXX_FLAGS="-Werror" $BUILD_OPTION && \
+  #     # Mainly to see if the sanitize option was perfectly executed
+  #     echo "---- ldd on executables ----" && \
+  #     ldd ran_build/build/*softmodem* ran_build/build/nr-cuup ran_build/build/oairu && \
+  #     echo "---- ldd on shared libraries ----" && \
+  #     ldd ran_build/build/*.so
+  
+  RUN /bin/sh oaienv && \
+      cd cmake_targets && \
+      mkdir -p log && \
+      ./build_oai -c --ninja \
+        --eNB --gNB --RU --UE --nrUE \
+        --build-lib "telnetsrv enbscope uescope nrscope" \
+        -w USRP -w SIMU -t Ethernet \
+        --build-e2 --cmake-opt -DXAPP_MULTILANGUAGE=OFF \
+        --noavx512 \
+        $BUILD_OPTION && \
+      echo "Build completed successfully"
+  
+  # Start a new stage for the runtime image
+  FROM ubuntu:22.04 AS runtime
+  
+  # Install sudo and any runtime dependencies
+  RUN apt-get update && apt-get install -y \
+      sudo \
+      # Add other necessary runtime dependencies here
+      && rm -rf /var/lib/apt/lists/*
+  
+  # Create a user with sudo privileges
+  RUN useradd -m oaiuser && echo "oaiuser:oaiuser" | chpasswd && adduser oaiuser sudo
+  
+  # Ensure sudo group users are not asked for a password when using sudo
+  RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+  
+  # Copy built artifacts from builder stage
+  COPY --from=ran-build --chown=oaiuser:oaiuser /oai-ran/cmake_targets/ran_build /oai-ran/ran_build
+  
+  # Set working directory
+  WORKDIR /oai-ran
+  
+  # Switch to the oaiuser
+  USER oaiuser
+  
+  # Create a script to run the application with sudo
+  RUN echo '#!/bin/bash\n\
+  exec sudo /oai-ran/cmake_targets/ran_build/build/nr-softmodem "$@"' > /oai-ran/run_with_sudo.sh && \
+    chmod +x /oai-ran/run_with_sudo.sh
+  
+  # Set the entry point to the script
+  ENTRYPOINT ["/oai-ran/run_with_sudo.sh"]
+  
