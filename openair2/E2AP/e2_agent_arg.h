@@ -28,7 +28,9 @@
 
 // Wrapper for OAI
 typedef struct{
-  const char *ip;
+  // const char *ip;
+  const char *server_ip;
+  const char *client_ip;
   const char *sm_dir;
   const bool enabled;
 } e2_agent_args_t;
