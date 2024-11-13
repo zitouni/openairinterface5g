@@ -22,34 +22,32 @@
 #include "ran_func_mac.h"
 #include <assert.h>
 
-static
-const int mod_id = 0;
-
+static const int mod_id = 0;
 
 bool read_mac_sm(void* data)
 {
   assert(data != NULL);
 
   mac_ind_data_t* mac = (mac_ind_data_t*)data;
-  //fill_mac_ind_data(mac);
+  // fill_mac_ind_data(mac);
 
   mac->msg.tstamp = time_now_us();
 
-  NR_UEs_t *UE_info = &RC.nrmac[mod_id]->UE_info;
+  NR_UEs_t* UE_info = &RC.nrmac[mod_id]->UE_info;
   size_t num_ues = 0;
-  UE_iterator(UE_info->list, ue) {
+  UE_iterator (UE_info->list, ue) {
     if (ue)
       num_ues += 1;
   }
 
   mac->msg.len_ue_stats = num_ues;
-  if(mac->msg.len_ue_stats > 0){
+  if (mac->msg.len_ue_stats > 0) {
     mac->msg.ue_stats = calloc(mac->msg.len_ue_stats, sizeof(mac_ue_stats_impl_t));
-    assert(mac->msg.ue_stats != NULL && "Memory exhausted" );
+    assert(mac->msg.ue_stats != NULL && "Memory exhausted");
   }
 
-  size_t i = 0; //TODO
-  UE_iterator(UE_info->list, UE) {
+  size_t i = 0; // TODO
+  UE_iterator (UE_info->list, UE) {
     const NR_UE_sched_ctrl_t* sched_ctrl = &UE->UE_sched_ctrl;
     mac_ue_stats_impl_t* rd = &mac->msg.ue_stats[i];
 
@@ -83,8 +81,8 @@ bool read_mac_sm(void* data)
     rd->dl_aggr_sdus = UE->mac_stats.dl.num_mac_sdu;
     rd->ul_aggr_sdus = UE->mac_stats.ul.num_mac_sdu;
 
-    rd->pusch_snr = (float) sched_ctrl->pusch_snrx10 / 10; //: float = -64;
-    rd->pucch_snr = (float) sched_ctrl->pucch_snrx10 / 10; //: float = -64;
+    rd->pusch_snr = (float)sched_ctrl->pusch_snrx10 / 10; //: float = -64;
+    rd->pucch_snr = (float)sched_ctrl->pucch_snrx10 / 10; //: float = -64;
 
     rd->wb_cqi = sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.wb_cqi_1tb;
     rd->dl_mcs1 = sched_ctrl->dl_bler_stats.mcs;
@@ -109,7 +107,6 @@ bool read_mac_sm(void* data)
       rd->cqi = UE->UE_sched_ctrl.CSI_report.cri_ri_li_pmi_cqi_report.wb_cqi_1tb;
     }
     rd->rsrp = UE->mac_stats.num_rsrp_meas > 0 ? UE->mac_stats.cumul_rsrp / UE->mac_stats.num_rsrp_meas : 0;
-
     const uint32_t bufferSize = sched_ctrl->estimated_ul_buffer - sched_ctrl->sched_ul_bytes;
     rd->bsr = bufferSize;
 
@@ -134,12 +131,11 @@ bool read_mac_sm(void* data)
 void read_mac_setup_sm(void* data)
 {
   assert(data != NULL);
-  assert(0 !=0 && "Not supported");
+  assert(0 != 0 && "Not supported");
 }
 
 sm_ag_if_ans_t write_ctrl_mac_sm(void const* data)
 {
   assert(data != NULL);
-  assert(0 !=0 && "Not supported");
+  assert(0 != 0 && "Not supported");
 }
-
