@@ -45,15 +45,30 @@ instance_t CUuniqInstance = 0;
 
 static void initialize_agent(ngran_node_t node_type, e2_agent_args_t oai_args)
 {
- const char* conf_example_msg = "i.e., add in config file the following line:  e2_agent = {near_ric_ip_addr = \"127.0.0.1\"; local_ip_addr = \"127.0.0.1\"; sm_dir = \"/usr/local/lib/flexric/\");} ";
-  AssertFatal(oai_args.sm_dir != NULL , "Please, specify the directory where the SMs are located in the config file, %s", conf_example_msg);
-  AssertFatal(oai_args.server_ip != NULL , "Please, specify the IP address of the nearRT-RIC in the config file, %s", conf_example_msg);
-  AssertFatal(oai_args.client_ip != NULL , "Please, specify the local IP address to connect ot the nearRT-RIC in the config file, %s", conf_example_msg);
+  const char *conf_example_msg =
+      "i.e., add in config file the following line: e2_agent = {\n"
+      "    near_ric_ip_addr = [\"192.168.130.81\", \"192.168.130.82\"];\n"
+      "    local_ip_addr = \"127.0.0.1\";\n"
+      "    sm_dir = \"/usr/local/lib/flexric/\";\n"
+      "}";
+  AssertFatal(oai_args.sm_dir != NULL,
+              "Please, specify the directory where the SMs are located in the config file, %s",
+              conf_example_msg);
 
-  printf("After RCconfig_NR_E2agent %s %s %s\n",oai_args.sm_dir, oai_args.server_ip , oai_args.client_ip );
+  AssertFatal(oai_args.ric_ip_list.num_ric_addresses > 0,
+              "Please, specify at least one IP address of the nearRT-RIC in the config file, %s",
+              conf_example_msg);
+  // AssertFatal(oai_args.server_ip != NULL,
+  //             "Please, specify the IP address of the nearRT-RIC in the config file, %s",
+  //             conf_example_msg);
+  AssertFatal(oai_args.client_ip != NULL,
+              "Please, specify the local IP address to connect ot the nearRT-RIC in the config file, %s",
+              conf_example_msg);
 
-  fr_args_t args = { .server_ip = oai_args.server_ip , .client_ip = oai_args.client_ip }; // init_fr_args(0, NULL);
-  memcpy(args.libs_dir, oai_args.sm_dir, 128);
+  // printf("After RCconfig_NR_E2agent %s %s %s\n", oai_args.sm_dir, oai_args.server_ip, oai_args.client_ip);
+
+  // fr_args_t args = {.server_ip = oai_args.server_ip, .client_ip = oai_args.client_ip}; // init_fr_args(0, NULL);
+  // memcpy(args.libs_dir, oai_args.sm_dir, 128);
 
   sleep(1);
 
@@ -68,15 +83,47 @@ static void initialize_agent(ngran_node_t node_type, e2_agent_args_t oai_args)
   const int mnc = e1inst->cuup.setupReq.plmn[0].id.mnc;
   const int mnc_digit_len = e1inst->cuup.setupReq.plmn[0].id.mnc_digit_length;
 
-  printf("[E2 NODE]: mcc = %d mnc = %d mnc_digit = %d nb_id = %d \n", mcc, mnc, mnc_digit_len, nb_id);
+  printf("[E2 NODE]: mcc = %d mnc = %d mnc_digit = %d nb_id = %d\n", mcc, mnc, mnc_digit_len, nb_id);
 
-  printf("[E2 NODE]: Args %s %s \n", args.server_ip, args.libs_dir);
-
+  /* Initialize RAN functions */
   sm_io_ag_ran_t io = init_ran_func_ag();
-  init_agent_api(mcc, mnc, mnc_digit_len, nb_id, cu_up_id, node_type, io, &args);
-}
-#endif  // E2_AGENT
 
+  /* Try to connect to each configured RIC */
+  for (int i = 0; i < oai_args.ric_ip_list.num_ric_addresses; i++) {
+    printf("[E2 NODE]: Attempting connection to RIC %d at %s\n", i + 1, oai_args.ric_ip_list.ric_ip_addresses[i]);
+
+    /* Prepare arguments for this RIC connection */
+    fr_args_t args = {.server_ip = oai_args.ric_ip_list.ric_ip_addresses[i], .client_ip = oai_args.client_ip};
+
+    /* Copy SM directory path */
+    memcpy(args.libs_dir, oai_args.sm_dir, 128);
+
+    printf(
+        "[E2 NODE]: Connection parameters for RIC %d:\n"
+        "  - Server IP: %s\n"
+        "  - Client IP: %s\n"
+        "  - SM Directory: %s\n",
+        i + 1,
+        args.server_ip,
+        args.client_ip,
+        args.libs_dir);
+
+    /* Add delay between connection attempts if not first RIC */
+    if (i > 0) {
+      sleep(2);
+    }
+
+    /* Initialize E2 agent for this RIC */
+    init_agent_api(mcc, mnc, mnc_digit_len, nb_id, cu_up_id, node_type, io, &args);
+
+    /* Note: Current implementation assumes init_agent_api is successful
+     * If error handling is needed, modify according to init_agent_api return value
+     */
+  }
+
+  // init_agent_api(mcc, mnc, mnc_digit_len, nb_id, cu_up_id, node_type, io, &args);
+}
+#endif // E2_AGENT
 
 void exit_function(const char *file, const char *function, const int line, const char *s, const int assert)
 {
@@ -179,12 +226,12 @@ int main(int argc, char **argv)
   AssertFatal(msg != NULL, "Send init to task for E1AP UP failed\n");
   itti_send_msg_to_task(TASK_CUUP_E1, 0, msg);
 
-  #ifdef E2_AGENT
+#ifdef E2_AGENT
   //////////////////////////////////
   //////////////////////////////////
   //// Init the E2 Agent
 
-  // OAI Wrapper 
+  // OAI Wrapper
   e2_agent_args_t oai_args = RCconfig_NR_E2agent();
 
   if (oai_args.enabled) {
@@ -193,12 +240,16 @@ int main(int argc, char **argv)
     initialize_agent(node_type, oai_args);
   }
 
-  #endif // E2_AGENT
+#endif // E2_AGENT
 
   printf("TYPE <CTRL-C> TO TERMINATE\n");
   itti_wait_tasks_end(NULL);
 
   logClean();
   printf("Bye.\n");
+
+#ifdef E2_AGENT
+  cleanup_e2_agent_args(&oai_args); // Single cleanup point
+#endif
   return 0;
 }
