@@ -1224,6 +1224,8 @@ NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
   if (!measurementConfiguration)
     return NULL;
 
+  LOG_I(NR_RRC, "in get_MeasConfig()!\n");//dhlTest
+
   if (!measurementConfiguration->a2_event && !measurementConfiguration->per_event && !measurementConfiguration->a3_event_list) {
     LOG_D(NR_RRC, "NR Measurements are not configured in the conf file\n");
     return NULL;
@@ -1246,7 +1248,7 @@ NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
   }
 
   if (measurementConfiguration->a2_event) {
-    LOG_D(NR_RRC, "HO LOG: Preparing A2 Event Measurement Configuration!\n");
+    LOG_I(NR_RRC, "HO LOG: Preparing A2 Event Measurement Configuration!\n");
     NR_ReportConfigToAddMod_t *rc_A2 = prepare_a2_event_report(measurementConfiguration->a2_event);
     asn1cSeqAdd(&mc->reportConfigToAddModList->list, rc_A2);
   }
@@ -1256,13 +1258,19 @@ NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
        If no related A3 but there is default add the default one.
        If default one added once as a report, no need to add it again && duplication.
     */
-    LOG_D(NR_RRC, "HO LOG: Preparing A3 Event Measurement Configuration!\n");
+    LOG_I(NR_RRC, "HO LOG: Preparing A3 Event Measurement Configuration! NeibourCellNum = %u\n", (unsigned int)neighbourConfiguration->size);
     bool is_default_a3_added = false;
     for (uint8_t neighbourIdx = 0; neighbourIdx < neighbourConfiguration->size; neighbourIdx++) {
       const nr_neighbour_gnb_configuration_t *neighbourCell =
           (const nr_neighbour_gnb_configuration_t *)seq_arr_at(neighbourConfiguration, neighbourIdx);
+
+      LOG_I(NR_RRC, "NeibourCellId = %d, ssb = %d\n", (unsigned int)neighbourCell->nrcell_id, (unsigned int)neighbourCell->absoluteFrequencySSB);
       if (!neighbourCell->isIntraFrequencyNeighbour)
-        continue;
+      {
+        //continue; 
+        LOG_I(NR_RRC, "A3 Event interFreqNeibourCell !\n");
+      }
+        
 
       const nr_a3_event_t *a3Event = get_a3_configuration(neighbourCell->physicalCellId);
       if (!a3Event || is_default_a3_added)
@@ -1273,12 +1281,17 @@ NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
 
       NR_ReportConfigToAddMod_t *rc_A3 = prepare_a3_event_report(a3Event);
       asn1cSeqAdd(&mc->reportConfigToAddModList->list, rc_A3);
+      LOG_I(NR_RRC, "A3 Event ReportConfig added!\n");
     }
   }
 
   DevAssert(mt != NULL && mt->frequencyAndTiming != NULL);
   const struct NR_MeasTiming__frequencyAndTiming *ft = mt->frequencyAndTiming;
   const NR_SSB_MTC_t *ssb_mtc = &ft->ssb_MeasurementTimingConfiguration;
+  
+  //dhlTest added begin
+  bool bIntraFreqFlag = true;
+  //dhlTest added end
 
   // Measurement Objects: Specifies what is to be measured. For NR and inter-RAT E-UTRA measurements, this may include
   // cell-specific offsets, blacklisted cells to be ignored and whitelisted cells to consider for measurements.
@@ -1305,7 +1318,11 @@ NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
       const nr_neighbour_gnb_configuration_t *neighbourCell =
           (const nr_neighbour_gnb_configuration_t *)seq_arr_at(neighbourConfiguration, nCell);
       if (!neighbourCell->isIntraFrequencyNeighbour)
+      {
+        bIntraFreqFlag = false;
         continue;
+      }
+        
 
       if (monr1->cellsToAddModList == NULL) {
         monr1->cellsToAddModList = calloc(1, sizeof(*monr1->cellsToAddModList));
@@ -1320,6 +1337,55 @@ NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
   mo1->measObject.choice.measObjectNR = monr1;
   asn1cSeqAdd(&mc->measObjectToAddModList->list, mo1);
 
+  //added begin by dhlTest to be deleted later when interFreqMeasObj is supported 
+  if (bIntraFreqFlag == false)
+  {
+    NR_MeasObjectToAddMod_t *mo12 = calloc(1, sizeof(*mo12));
+    mo12->measObjectId = 2;
+    mo12->measObject.present = NR_MeasObjectToAddMod__measObject_PR_measObjectNR;
+    NR_MeasObjectNR_t *monr12 = calloc(1, sizeof(*monr12));
+    //asn1cCallocOne(monr12->ssbFrequency, ft->carrierFreq);///////////////////////////////////////
+    asn1cCallocOne(monr12->ssbSubcarrierSpacing, ft->ssbSubcarrierSpacing);
+    monr12->referenceSignalConfig.ssb_ConfigMobility = calloc(1, sizeof(*monr12->referenceSignalConfig.ssb_ConfigMobility));
+    monr12->referenceSignalConfig.ssb_ConfigMobility->deriveSSB_IndexFromCell = true;
+    monr12->absThreshSS_BlocksConsolidation = calloc(1, sizeof(*monr12->absThreshSS_BlocksConsolidation));
+    asn1cCallocOne(monr12->absThreshSS_BlocksConsolidation->thresholdRSRP, 36);
+    asn1cCallocOne(monr12->nrofSS_BlocksToAverage, 8);
+    monr12->smtc1 = calloc(1, sizeof(*monr12->smtc1));
+    monr12->smtc1->periodicityAndOffset = ssb_mtc->periodicityAndOffset;
+    monr12->smtc1->duration = ssb_mtc->duration;
+    monr12->quantityConfigIndex = 1;
+    monr12->ext1 = calloc(1, sizeof(*monr12->ext1));
+    asn1cCallocOne(monr12->ext1->freqBandIndicatorNR, band);
+
+    if (neighbourConfiguration && measurementConfiguration->a3_event_list) {
+      for (uint8_t nCell = 0; nCell < neighbourConfiguration->size; nCell++) {
+        const nr_neighbour_gnb_configuration_t *neighbourCell =
+            (const nr_neighbour_gnb_configuration_t *)seq_arr_at(neighbourConfiguration, nCell);
+        if (!neighbourCell->isIntraFrequencyNeighbour)
+        {
+          //continue;
+          LOG_I(NR_RRC, "interFreqNegbour Cell MeasObj configured!\n");
+          asn1cCallocOne(monr12->ssbFrequency, neighbourCell->absoluteFrequencySSB);
+        }
+          
+
+        if (monr12->cellsToAddModList == NULL) {
+          monr12->cellsToAddModList = calloc(1, sizeof(*monr12->cellsToAddModList));
+        }
+
+        NR_CellsToAddMod_t *cell = calloc(1, sizeof(*cell));
+        cell->physCellId = neighbourCell->physicalCellId;
+        ASN_SEQUENCE_ADD(&monr12->cellsToAddModList->list, cell);
+      }
+    }
+
+    mo12->measObject.choice.measObjectNR = monr12;
+    asn1cSeqAdd(&mc->measObjectToAddModList->list, mo12);
+  }  
+  //added end by dhlTest to be deleted later when interFreqMeasObj is supported
+
+
   // Preparation of measId
   for (uint8_t reportIdx = 0; reportIdx < mc->reportConfigToAddModList->list.count; reportIdx++) {
     const NR_ReportConfigId_t reportId = mc->reportConfigToAddModList->list.array[reportIdx]->reportConfigId;
@@ -1327,6 +1393,10 @@ NR_MeasConfig_t *get_MeasConfig(const NR_MeasTiming_t *mt,
     measid->measId = reportIdx + 1;
     measid->reportConfigId = reportId;
     measid->measObjectId = 1;
+
+    if ((bIntraFreqFlag == false) && (measid->measId == 3))
+      measid->measObjectId = 2;
+
     asn1cSeqAdd(&mc->measIdToAddModList->list, measid);
   }
 

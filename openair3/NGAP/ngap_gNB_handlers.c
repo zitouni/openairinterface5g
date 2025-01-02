@@ -957,12 +957,18 @@ static int ngap_gNB_handle_pdusession_setup_request(sctp_assoc_t assoc_id, uint3
   msg->amf_ue_ngap_id = ue_desc_p->amf_ue_ngap_id;
 
   /* UE Aggregated Maximum Bitrate */
-  NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PDUSessionResourceSetupRequestIEs_t, ie, container,
+  LOG_W(NGAP, "dhlTest: modify the code to adapt the icsCore&& UEAggregateMaximumBitRate\n");
+  /*NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PDUSessionResourceSetupRequestIEs_t, ie, container,
                          NGAP_ProtocolIE_ID_id_UEAggregateMaximumBitRate, true);
   asn_INTEGER2ulong(&(ie->value.choice.UEAggregateMaximumBitRate.uEAggregateMaximumBitRateUL),
                     &msg->ueAggMaxBitRateUplink);
   asn_INTEGER2ulong(&(ie->value.choice.UEAggregateMaximumBitRate.uEAggregateMaximumBitRateDL),
-                    &msg->ueAggMaxBitRateDownlink);
+                    &msg->ueAggMaxBitRateDownlink);*/
+  
+  msg->ueAggMaxBitRateDownlink = 1073741824;  // new added 
+
+  msg->ueAggMaxBitRateUplink = 1073741824;       //new added 
+  
 
   NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PDUSessionResourceSetupRequestIEs_t, ie, container,
                          NGAP_ProtocolIE_ID_id_PDUSessionResourceSetupListSUReq, true);

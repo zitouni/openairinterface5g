@@ -219,6 +219,7 @@ static bool valid_du_in_neighbour_configs(const seq_arr_t *neighbour_cell_config
         LOG_W(NR_RRC, "Cell %ld in neighbour config: TAC mismatch (%d vs %d)\n", cell->nr_cellid, *cell->tac, nc->tac);
         return false;
       }
+      /* dhlTest delete
       if (ssb_arfcn != nc->absoluteFrequencySSB) {
         LOG_W(NR_RRC,
               "Cell %ld in neighbour config: SSB ARFCN mismatch (%d vs %d)\n",
@@ -226,7 +227,7 @@ static bool valid_du_in_neighbour_configs(const seq_arr_t *neighbour_cell_config
               ssb_arfcn,
               nc->absoluteFrequencySSB);
         return false;
-      }
+      }*/
       if (get_ssb_scs(cell) != nc->subcarrierSpacing) {
         LOG_W(NR_RRC,
               "Cell %ld in neighbour config: SCS mismatch (%d vs %d)\n",

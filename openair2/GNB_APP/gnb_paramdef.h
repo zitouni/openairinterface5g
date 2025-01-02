@@ -455,13 +455,13 @@ typedef enum {
 {GNB_CONFIG_STRING_TIMERS_SR_PROHIBIT_TIMER,          NULL,     0,            .iptr=NULL,  .defintval=0,     TYPE_INT,      0},       \
 {GNB_CONFIG_STRING_TIMERS_SR_TRANS_MAX,               NULL,     0,            .iptr=NULL,  .defintval=64,    TYPE_INT,      0},       \
 {GNB_CONFIG_STRING_TIMERS_SR_PROHIBIT_TIMER_V1700,    NULL,     0,            .iptr=NULL,  .defintval=0,     TYPE_INT,      0},       \
-{GNB_CONFIG_STRING_TIMERS_T300,                       NULL,     0,            .iptr=NULL,  .defintval=400,   TYPE_INT,      0},       \
+{GNB_CONFIG_STRING_TIMERS_T300,                       NULL,     0,            .iptr=NULL,  .defintval=2000,   TYPE_INT,      0},       \
 {GNB_CONFIG_STRING_TIMERS_T301,                       NULL,     0,            .iptr=NULL,  .defintval=400,   TYPE_INT,      0},       \
 {GNB_CONFIG_STRING_TIMERS_T310,                       NULL,     0,            .iptr=NULL,  .defintval=2000,  TYPE_INT,      0},       \
 {GNB_CONFIG_STRING_TIMERS_N310,                       NULL,     0,            .iptr=NULL,  .defintval=10,    TYPE_INT,      0},       \
 {GNB_CONFIG_STRING_TIMERS_T311,                       NULL,     0,            .iptr=NULL,  .defintval=3000,  TYPE_INT,      0},       \
 {GNB_CONFIG_STRING_TIMERS_N311,                       NULL,     0,            .iptr=NULL,  .defintval=1,     TYPE_INT,      0},       \
-{GNB_CONFIG_STRING_TIMERS_T319,                       NULL,     0,            .iptr=NULL,  .defintval=400,   TYPE_INT,      0},       \
+{GNB_CONFIG_STRING_TIMERS_T319,                       NULL,     0,            .iptr=NULL,  .defintval=2000,   TYPE_INT,      0},       \
 }
 
 #define GNB_TIMERS_SR_PROHIBIT_TIMER_IDX       0

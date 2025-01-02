@@ -136,7 +136,7 @@ int f1ap_handle_message(instance_t instance,
     ret=-1;
   } else {
     /* Calling the right handler */
-    LOG_D(F1AP, "Calling handler with instance %ld\n",instance);
+    LOG_D(F1AP, "F1ap Calling handler with instance %ld, procedureCode = %ld\n",instance, pdu->choice.initiatingMessage->procedureCode);
     ret = (*f1ap_messages_processing[pdu->choice.initiatingMessage->procedureCode][pdu->present - 1])(instance,
                                                                                                       assoc_id,
                                                                                                       stream,

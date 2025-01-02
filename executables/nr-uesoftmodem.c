@@ -132,7 +132,7 @@ uint32_t       N_RB_DL    = 106;
 unsigned int NTN_UE_Koffset = 0;
 
 int create_tasks_nrue(uint32_t ue_nb) {
-  LOG_D(NR_RRC, "%s(ue_nb:%d)\n", __FUNCTION__, ue_nb);
+  LOG_I(NR_RRC, "%s(ue_nb:%d)\n", __FUNCTION__, ue_nb);
   itti_wait_ready(1);
 
   if (ue_nb > 0) {

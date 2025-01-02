@@ -888,7 +888,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
         //nr_mac_apply_cellgroup(gNB_mac, UE, frameP,  slotP);
         //nr_mac_enable_ue_rrc_processing_timer(gNB_mac, UE, /* apply_cellGroup = */ true);
       } else {
-        LOG_D(NR_MAC, "[RAPROC] Received Msg3:\n");
+        LOG_A(NR_MAC, "[RAPROC] Received Msg3:\n");
         for (uint32_t k = 0; k < sdu_lenP; k++) {
           LOG_D(NR_MAC, "(%i): 0x%x\n", k, sduP[k]);
         }

@@ -417,6 +417,7 @@ void nr_HO_N2_trigger(gNB_RRC_INST *rrc, int nr_cgi, uint8_t *ho_prep_info, uint
 
 void nr_HO_F1_trigger_telnet(gNB_RRC_INST *rrc, uint32_t rrc_ue_id)
 {
+  LOG_E(NR_RRC, "dhlTest for HO in nr_HO_F1_trigger_telnet.\n");
   rrc_gNB_ue_context_t *ue_context_p = rrc_gNB_get_ue_context(rrc, rrc_ue_id);
   if (ue_context_p == NULL) {
     LOG_E(NR_RRC, "cannot find UE context for UE ID %d\n", rrc_ue_id);
@@ -1955,7 +1956,8 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
   }
 
   if (UE->ho_context != NULL) {
-    LOG_A(NR_RRC, "handover for UE %d/RNTI %04x complete!\n", UE->rrc_ue_id, UE->rnti);
+    //LOG_A(NR_RRC, "handover for UE %d/RNTI %04x complete!\n", UE->rrc_ue_id, UE->rnti);
+    LOG_E(NR_RRC, "handover for UE %d/RNTI %04x complete!\n", UE->rrc_ue_id, UE->rnti);//dhlTest
     DevAssert(UE->ho_context->target != NULL);
 
     // TODO make fptr
@@ -2002,7 +2004,7 @@ int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
     LOG_D(NR_RRC, "Received message on SRB%ld\n", Srb_id);
   }
 
-  LOG_D(NR_RRC, "Decoding UL-DCCH Message\n");
+  LOG_I(NR_RRC, "Decoding UL-DCCH Message\n");
   {
     for (int i = 0; i < sdu_sizeP; i++) {
       LOG_T(NR_RRC, "%x.", Rx_sdu[i]);
@@ -2030,6 +2032,7 @@ int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
         break;
 
       case NR_UL_DCCH_MessageType__c1_PR_rrcReconfigurationComplete:
+        LOG_E(NR_RRC, "Received rrcReconfigurationComplete message from UE\n"); //dhlTest
         handle_rrcReconfigurationComplete(ctxt_pP, ue_context_p, ul_dcch_msg->message.choice.c1->choice.rrcReconfigurationComplete);
         break;
 
