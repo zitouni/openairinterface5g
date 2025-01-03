@@ -25,22 +25,46 @@
 /* E2 Agent configuration */
 #define CONFIG_STRING_E2AGENT "e2_agent"
 
-#define E2AGENT_CONFIG_IP    "near_ric_ip_addr"
-#define E2AGENT_CLIENT_IP    "local_ip_addr"
+#define E2AGENT_CONFIG_IP "near_ric_ip_addr"
+#define E2AGENT_CLIENT_IP "local_ip_addr"
 #define E2AGENT_CONFIG_SMDIR "sm_dir"
+#define MAX_RIC_IP_ADDRESSES 20 // Maximum number of RIC IP addresses supported
+
+// Structure to hold multiple RIC IP addresses
+typedef struct {
+  char* ric_ip_addresses[MAX_RIC_IP_ADDRESSES];
+  int num_ric_addresses;
+} ric_ip_config_t;
 
 static const char* const e2agent_config_ip_default = "127.0.0.1";
 static const char* const e2agent_client_ip_default = "127.0.0.1";
 static const char* const e2agent_config_smdir_default = ".";
 
-#define E2AGENT_PARAMS_DESC { \
-  {E2AGENT_CONFIG_IP,    "RIC IP address",             0, strptr:NULL, defstrval:(char*)e2agent_config_ip_default,    TYPE_STRING, 0}, \
-  {E2AGENT_CLIENT_IP,    "RIC Client IP address",             0, strptr:NULL, defstrval:(char*)e2agent_client_ip_default,    TYPE_STRING, 0}, \
-  {E2AGENT_CONFIG_SMDIR, "Directory with SMs to load", 0, strptr:NULL, defstrval:(char*)e2agent_config_smdir_default, TYPE_STRING, 0}, \
-}
+#define E2AGENT_PARAMS_DESC                                                                                                  \
+  {                                                                                                                          \
+      {E2AGENT_CONFIG_IP, "RIC IP address", 0, strptr : NULL, defstrval : (char*)e2agent_config_ip_default, TYPE_STRING, 0}, \
+      {                                                                                                                      \
+        E2AGENT_CLIENT_IP,                                                                                                   \
+        "RIC Client IP address",                                                                                             \
+        0,                                                                                                                   \
+        strptr : NULL,                                                                                                       \
+        defstrval : (char*)e2agent_client_ip_default,                                                                        \
+        TYPE_STRING,                                                                                                         \
+        0                                                                                                                    \
+      },                                                                                                                     \
+      {                                                                                                                      \
+        E2AGENT_CONFIG_SMDIR,                                                                                                \
+        "Directory with SMs to load",                                                                                        \
+        0,                                                                                                                   \
+        strptr : NULL,                                                                                                       \
+        defstrval : (char*)e2agent_config_smdir_default,                                                                     \
+        TYPE_STRING,                                                                                                         \
+        0                                                                                                                    \
+      },                                                                                                                     \
+  }
 
-#define E2AGENT_CONFIG_IP_IDX    0
-#define E2AGENT_CLIENT_IP_IDX    1
+#define E2AGENT_CONFIG_IP_IDX 0
+#define E2AGENT_CLIENT_IP_IDX 1
 #define E2AGENT_CONFIG_SMDIR_IDX 2
 
-#endif 
+#endif

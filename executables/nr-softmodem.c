@@ -139,9 +139,6 @@ uint8_t nb_antenna_rx = 1;
 
 int otg_enabled;
 
-extern void reset_opp_meas(void);
-extern void print_opp_meas(void);
-
 extern void *udp_eNB_task(void *args_p);
 
 int transmission_mode = 1;
@@ -548,55 +545,111 @@ void init_pdcp(void)
 static void initialize_agent(ngran_node_t node_type, e2_agent_args_t oai_args)
 {
   const char *conf_example_msg =
-      "i.e., add in config file the following line:  e2_agent = {near_ric_ip_addr = \"127.0.0.1\"; local_ip_addr = \"127.0.0.1\"; "
-      "sm_dir = \"/usr/local/lib/flexric/\");} ";
+      "i.e., add in config file the following line: e2_agent = {\n"
+      "    near_ric_ip_addr = [\n"
+      "        \"192.168.130.81\",\n"
+      "        \"192.168.130.61\"\n"
+      "    ];\n"
+      "    local_ip_addr = \"127.0.0.1\";\n"
+      "    sm_dir = \"/usr/local/lib/flexric/\";\n"
+      "}";
   AssertFatal(oai_args.sm_dir != NULL,
               "Please, specify the directory where the SMs are located in the config file, %s",
               conf_example_msg);
-  AssertFatal(oai_args.server_ip != NULL,
-              "Please, specify the IP address of the nearRT-RIC in the config file, %s",
+  // AssertFatal(oai_args.server_ip != NULL,
+  //             "Please, specify the IP address of the nearRT-RIC in the config file, %s",
+  //             conf_example_msg);
+  AssertFatal(oai_args.ric_ip_list.num_ric_addresses > 0,
+              "Please, specify at least one IP address of the nearRT-RIC in the config file, %s",
               conf_example_msg);
   AssertFatal(oai_args.client_ip != NULL,
               "Please, specify the local IP address to connect ot the nearRT-RIC in the config file, %s",
               conf_example_msg);
 
-  printf("After RCconfig_NR_E2agent %s %s %s\n", oai_args.sm_dir, oai_args.server_ip, oai_args.client_ip);
+  // printf("After RCconfig_NR_E2agent %s %s %s\n", oai_args.sm_dir, oai_args.server_ip, oai_args.client_ip);
 
-  fr_args_t args = {.server_ip = oai_args.server_ip, .client_ip = oai_args.client_ip}; // init_fr_args(0, NULL);
-  memcpy(args.libs_dir, oai_args.sm_dir, 128);
+  // Initialize connection to each RIC
+  for (int i = 0; i < oai_args.ric_ip_list.num_ric_addresses; i++) {
+    printf("Initializing connection to RIC %d: %s\n", i, oai_args.ric_ip_list.ric_ip_addresses[i]);
 
-  sleep(1);
-  const gNB_RRC_INST *rrc = RC.nrrrc[0];
-  assert(rrc != NULL && "rrc cannot be NULL");
+    fr_args_t args = {.server_ip = oai_args.ric_ip_list.ric_ip_addresses[i], .client_ip = oai_args.client_ip};
+    memcpy(args.libs_dir, oai_args.sm_dir, 128);
 
-  const int mcc = rrc->configuration.mcc[0];
-  const int mnc = rrc->configuration.mnc[0];
-  const int mnc_digit_len = rrc->configuration.mnc_digit_length[0];
-  // const ngran_node_t node_type = rrc->node_type;
-  int nb_id = 0;
-  int cu_du_id = 0;
-  if (node_type == ngran_gNB) {
-    nb_id = rrc->node_id;
-  } else if (node_type == ngran_gNB_DU) {
-    const gNB_MAC_INST *mac = RC.nrmac[0];
-    AssertFatal(mac, "MAC not initialized\n");
-    cu_du_id = mac->f1_config.gnb_id;
-    nb_id = mac->f1_config.setup_req->gNB_DU_id;
-  } else if (node_type == ngran_gNB_CU || node_type == ngran_gNB_CUCP) {
-    // agent buggy: the CU has no second ID, it is the CU-UP ID
-    // however, that is not a problem her for us, so put the same ID twice
-    nb_id = rrc->node_id;
-    cu_du_id = rrc->node_id;
-  } else {
-    LOG_E(NR_RRC, "not supported ran type detect\n");
+    // Add delay between connection attempts
+    if (i > 0) {
+      sleep(2);
+    }
+
+    // Initialize E2 agent for this RIC
+    // Note: You'll need to modify the init_agent_api to handle multiple connections
+    const gNB_RRC_INST *rrc = RC.nrrrc[0];
+    assert(rrc != NULL && "rrc cannot be NULL");
+
+    const int mcc = rrc->configuration.mcc[0];
+    const int mnc = rrc->configuration.mnc[0];
+    const int mnc_digit_len = rrc->configuration.mnc_digit_length[0];
+    // const ngran_node_t node_type = rrc->node_type;
+    int nb_id = 0;
+    int cu_du_id = 0;
+    if (node_type == ngran_gNB) {
+      nb_id = rrc->node_id;
+    } else if (node_type == ngran_gNB_DU) {
+      const gNB_MAC_INST *mac = RC.nrmac[0];
+      AssertFatal(mac, "MAC not initialized\n");
+      cu_du_id = mac->f1_config.gnb_id;
+      nb_id = mac->f1_config.setup_req->gNB_DU_id;
+    } else if (node_type == ngran_gNB_CU || node_type == ngran_gNB_CUCP) {
+      // agent buggy: the CU has no second ID, it is the CU-UP ID
+      // however, that is not a problem her for us, so put the same ID twice
+      nb_id = rrc->node_id;
+      cu_du_id = rrc->node_id;
+    } else {
+      LOG_E(NR_RRC, "not supported ran type detect\n");
+    }
+
+    printf("[E2 NODE]: mcc = %d mnc = %d mnc_digit = %d nb_id = %d \n", mcc, mnc, mnc_digit_len, nb_id);
+
+    printf("[E2 NODE]: Args Server IP: %s Client IP: %s  Libs Dir %s \n", args.server_ip, args.client_ip, args.libs_dir);
+
+    sm_io_ag_ran_t io = init_ran_func_ag();
+    init_agent_api(mcc, mnc, mnc_digit_len, nb_id, cu_du_id, node_type, io, &args);
   }
 
-  printf("[E2 NODE]: mcc = %d mnc = %d mnc_digit = %d nb_id = %d \n", mcc, mnc, mnc_digit_len, nb_id);
+  // fr_args_t args = {.server_ip = oai_args.server_ip, .client_ip = oai_args.client_ip}; // init_fr_args(0, NULL);
+  // memcpy(args.libs_dir, oai_args.sm_dir, 128);
 
-  printf("[E2 NODE]: Args Server IP: %s Client IP: %s  Libs Dir %s \n", args.server_ip, args.client_ip, args.libs_dir);
+  sleep(1);
+  // const gNB_RRC_INST *rrc = RC.nrrrc[0];
+  // assert(rrc != NULL && "rrc cannot be NULL");
 
-  sm_io_ag_ran_t io = init_ran_func_ag();
-  init_agent_api(mcc, mnc, mnc_digit_len, nb_id, cu_du_id, node_type, io, &args);
+  // const int mcc = rrc->configuration.mcc[0];
+  // const int mnc = rrc->configuration.mnc[0];
+  // const int mnc_digit_len = rrc->configuration.mnc_digit_length[0];
+  // // const ngran_node_t node_type = rrc->node_type;
+  // int nb_id = 0;
+  // int cu_du_id = 0;
+  // if (node_type == ngran_gNB) {
+  //   nb_id = rrc->node_id;
+  // } else if (node_type == ngran_gNB_DU) {
+  //   const gNB_MAC_INST *mac = RC.nrmac[0];
+  //   AssertFatal(mac, "MAC not initialized\n");
+  //   cu_du_id = mac->f1_config.gnb_id;
+  //   nb_id = mac->f1_config.setup_req->gNB_DU_id;
+  // } else if (node_type == ngran_gNB_CU || node_type == ngran_gNB_CUCP) {
+  //   // agent buggy: the CU has no second ID, it is the CU-UP ID
+  //   // however, that is not a problem her for us, so put the same ID twice
+  //   nb_id = rrc->node_id;
+  //   cu_du_id = rrc->node_id;
+  // } else {
+  //   LOG_E(NR_RRC, "not supported ran type detect\n");
+  // }
+
+  // printf("[E2 NODE]: mcc = %d mnc = %d mnc_digit = %d nb_id = %d \n", mcc, mnc, mnc_digit_len, nb_id);
+
+  // printf("[E2 NODE]: Args Server IP: %s Client IP: %s  Libs Dir %s \n", args.server_ip, args.client_ip, args.libs_dir);
+
+  // sm_io_ag_ran_t io = init_ran_func_ag();
+  // init_agent_api(mcc, mnc, mnc_digit_len, nb_id, cu_du_id, node_type, io, &args);
 }
 #endif
 
@@ -820,5 +873,10 @@ int main(int argc, char **argv)
   free(pckg);
   logClean();
   printf("Bye.\n");
+
+#ifdef E2_AGENT
+  cleanup_e2_agent_args(&oai_args);
+#endif
+
   return 0;
 }

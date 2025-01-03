@@ -26,17 +26,24 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "e2_agent_paramdef.h" // Include this to use ric_ip_config_t
 // Wrapper for OAI
-typedef struct{
-  // const char *ip;
-  const char *server_ip;
-  const char *client_ip;
-  const char *sm_dir;
-  const bool enabled;
+typedef struct {
+  ric_ip_config_t ric_ip_list;
+  char *client_ip;
+  char *sm_dir;
+  bool enabled;
 } e2_agent_args_t;
 
+// typedef struct{
+//   // const char *ip;
+//   const char *server_ip;
+//   const char *client_ip;
+//   const char *sm_dir;
+//   const bool enabled;
+// } e2_agent_args_t;
+
 e2_agent_args_t RCconfig_NR_E2agent(void);
+void cleanup_e2_agent_args(e2_agent_args_t *args);
 
 #endif
-
-

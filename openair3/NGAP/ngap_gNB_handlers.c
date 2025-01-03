@@ -968,8 +968,6 @@ static int ngap_gNB_handle_pdusession_setup_request(sctp_assoc_t assoc_id, uint3
   msg->gNB_ue_ngap_id = ue_desc_p->gNB_ue_ngap_id;
   msg->amf_ue_ngap_id = ue_desc_p->amf_ue_ngap_id;
 
-  LOG_W(NGAP, "dhlTest: modify the code to adapt the icsCore&& UEAggregateMaximumBitRate\n");
-
   /* UE Aggregated Maximum Bitrate */
   LOG_W(NGAP, "dhlTest: modify the code to adapt the icsCore&& UEAggregateMaximumBitRate\n");
   /*NGAP_FIND_PROTOCOLIE_BY_ID(NGAP_PDUSessionResourceSetupRequestIEs_t, ie, container,
@@ -1009,6 +1007,8 @@ static int ngap_gNB_handle_pdusession_setup_request(sctp_assoc_t assoc_id, uint3
     allocCopy(&msg->pdusession_setup_params[i].pdusessionTransfer, item_p->pDUSessionResourceSetupRequestTransfer);
   }
   itti_send_msg_to_task(TASK_RRC_GNB, ue_desc_p->gNB_instance->instance, message_p);
+
+  LOG_W(NGAP, "3 \n");
 
   LOG_W(NGAP, "3 \n");
 
