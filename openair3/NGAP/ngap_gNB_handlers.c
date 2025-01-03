@@ -1408,7 +1408,7 @@ int ngap_gNB_handle_message(sctp_assoc_t assoc_id, int32_t stream, const uint8_t
   /* No handler present.
    * This can mean not implemented or no procedure for gNB (wrong direction).
    */
-  LOG_W(RRC, "SCTP_DATA_IND from core ::procedurecode = %d\n", pdu.choice.initiatingMessage->procedureCode);
+  LOG_W(RRC, "SCTP_DATA_IND from core ::procedurecode = %ld\n", pdu.choice.initiatingMessage->procedureCode);
   if (ngap_messages_callback[pdu.choice.initiatingMessage->procedureCode][pdu.present - 1] == NULL) {
     NGAP_ERROR("[SCTP %u] No handler for procedureCode %ld in %s\n",
                assoc_id,

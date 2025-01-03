@@ -656,21 +656,8 @@ int main(int argc, char **argv)
   itti_init(TASK_MAX, tasks_info);
   // initialize mscgen log after ITTI
   init_opt();
-<<<<<<< HEAD
-
-=======
-  if (PDCP_USE_NETLINK && !IS_SOFTMODEM_NOS1) {
-    netlink_init();
-    if (get_softmodem_params()->nsa) {
-      init_pdcp();
-    }
-  }
-#ifndef PACKAGE_VERSION
-#define PACKAGE_VERSION "UNKNOWN-EXPERIMENTAL"
-#endif
-  >>>>>>> a54cf814b3 (remove  the #define E2_AGENT used for testing)
-      // strdup to put the sring in the core file for post mortem identification
-      char *pckg = strdup(OAI_PACKAGE_VERSION);
+  // strdup to put the sring in the core file for post mortem identification
+  char *pckg = strdup(OAI_PACKAGE_VERSION);
   LOG_I(HW, "Version: %s\n", pckg);
 
   // don't create if node doesn't connect to RRC/S1/GTP
@@ -684,12 +671,7 @@ int main(int argc, char **argv)
     AssertFatal(ret == 0, "cannot create ITTI tasks\n");
   }
 
-<<<<<<< HEAD
   pthread_cond_init(&sync_cond, NULL);
-=======
-  mlockall(MCL_CURRENT | MCL_FUTURE);
-  pthread_cond_init(&sync_cond, NULL);
->>>>>>> a54cf814b3 (remove  the #define E2_AGENT used for testing)
   pthread_mutex_init(&sync_mutex, NULL);
   usleep(1000);
 
@@ -705,13 +687,8 @@ int main(int argc, char **argv)
   printf("RC.nb_nr_L1_inst:%d\n", RC.nb_nr_L1_inst);
 
   if (RC.nb_nr_L1_inst > 0) {
-<<<<<<< HEAD
     printf("Initializing gNB threads wait_for_sync:%d\n", wait_for_sync);
     init_gNB(wait_for_sync);
-=======
-    printf("Initializing gNB threads single_thread_flag:%d wait_for_sync:%d\n", single_thread_flag, wait_for_sync);
-    init_gNB(single_thread_flag, wait_for_sync);
->>>>>>> a54cf814b3 (remove  the #define E2_AGENT used for testing)
   }
 
   printf("wait_gNBs()\n");
@@ -780,28 +757,11 @@ int main(int argc, char **argv)
     if (IS_SOFTMODEM_DOSCOPE) {
       sleep(1);
       scopeParms_t p;
-<<<<<<< HEAD
       p.argc = &argc;
       p.argv = argv;
       p.gNB = RC.gNB[0];
       p.ru = RC.ru[0];
       load_softscope("nr", &p);
-=======
-      p.argc = &argc;
-      p.argv = argv;
-      p.gNB = RC.gNB[0];
-      p.ru = RC.ru[0];
-      load_softscope("nr", &p);
-    }
-
-    if (IS_SOFTMODEM_DOSCOPE_QT) {
-      scopeParms_t p;
-      p.argc = &argc;
-      p.argv = argv;
-      p.gNB = RC.gNB[0];
-      p.ru = RC.ru[0];
-      load_softscope("nrqt", &p);
->>>>>>> a54cf814b3 (remove  the #define E2_AGENT used for testing)
     }
 
     if (NFAPI_MODE != NFAPI_MODE_PNF && NFAPI_MODE != NFAPI_MODE_VNF && NFAPI_MODE != NFAPI_MODE_AERIAL) {
