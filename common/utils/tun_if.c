@@ -140,7 +140,8 @@ static bool setInterfaceParameter(int sock_fd, const char *ifn, int af, const ch
 {
   DevAssert(af == AF_INET || af == AF_INET6);
   struct ifreq ifr = {0};
-  strncpy(ifr.ifr_name, ifn, sizeof(ifr.ifr_name));
+  // strncpy(ifr.ifr_name, ifn, sizeof(ifr.ifr_name));
+  snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifn); // fix of build warning
   struct in6_ifreq ifr6 = {0};
 
   void *ioctl_opt = NULL;
@@ -151,7 +152,7 @@ static bool setInterfaceParameter(int sock_fd, const char *ifn, int af, const ch
       LOG_E(OIP, "inet_pton(): cannot convert %s to IPv4 network address\n", if_addr);
       return false;
     }
-    memcpy(&ifr.ifr_ifru.ifru_addr,&addr,sizeof(struct sockaddr_in));
+    memcpy(&ifr.ifr_ifru.ifru_addr, &addr, sizeof(struct sockaddr_in));
     ioctl_opt = &ifr;
   } else {
     struct sockaddr_in6 addr6 = {.sin6_family = AF_INET6};
@@ -183,10 +184,11 @@ static bool setInterfaceParameter(int sock_fd, const char *ifn, int af, const ch
 typedef enum { INTERFACE_DOWN, INTERFACE_UP } if_action_t;
 static bool change_interface_state(int sock_fd, const char *ifn, if_action_t if_action)
 {
-  const char* action = if_action == INTERFACE_DOWN ? "DOWN" : "UP";
+  const char *action = if_action == INTERFACE_DOWN ? "DOWN" : "UP";
 
   struct ifreq ifr = {0};
-  strncpy(ifr.ifr_name, ifn, sizeof(ifr.ifr_name));
+  // strncpy(ifr.ifr_name, ifn, sizeof(ifr.ifr_name));
+  snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifn); // fix of build warning
   /* get flags of this interface: see netdevice(7) */
   bool success = ioctl(sock_fd, SIOCGIFFLAGS, (caddr_t)&ifr) == 0;
   if (!success)
@@ -280,4 +282,3 @@ void setup_ue_ipv4_route(int interface_id, const char *ipv4, const char *ifpref)
   }
   background_system(command_line);
 }
-
