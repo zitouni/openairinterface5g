@@ -85,6 +85,8 @@ unsigned short config_frames[4] = {2, 9, 11, 13};
 #ifdef E2_AGENT
 #include "openair2/E2AP/flexric/src/agent/e2_agent_api.h"
 #include "openair2/E2AP/RAN_FUNCTION/init_ran_func.h"
+
+e2_agent_args_t oai_args;
 #endif
 
 pthread_cond_t nfapi_sync_cond;
@@ -775,7 +777,7 @@ int main(int argc, char **argv)
   //// Init the E2 Agent
 
   // OAI Wrapper
-  e2_agent_args_t oai_args = RCconfig_NR_E2agent();
+  oai_args = RCconfig_NR_E2agent();
 
   if (oai_args.enabled) {
     initialize_agent(node_type, oai_args);
