@@ -102,13 +102,8 @@
 #include "assertions.h"
 
 #ifdef E2_AGENT
-#include "openair2/E2AP/flexric/src/util/time_now_us.h"
 #include "openair2/E2AP/flexric/src/agent/e2_agent_api.h"
-#include "openair2/E2AP/flexric/src/sm/sm_agent.h"
-#include "openair2/E2AP/e2_agent_arg.h"
-
-// External declaration for the agent initialized in nr-softmodem.c
-extern e2_agent_args_t oai_args;
+#include "openair2/E2AP/RAN_FUNCTION/surrey_log.h"
 #endif
 
 // #define XER_PRINT
@@ -663,6 +658,13 @@ static void rrc_gNB_process_RRCSetupComplete(const protocol_ctxt_t *const ctxt_p
   AssertFatal(ctxt_pP->rntiMaybeUEid == ue_context_pP->ue_context.rrc_ue_id, "logic bug: inconsistent IDs, must use CU UE ID!\n");
 
   rrc_gNB_send_NGAP_NAS_FIRST_REQ(ctxt_pP, ue_context_pP, rrcSetupComplete);
+
+  // Only for testing
+  //  #ifdef E2_AGENT
+  //    //   Add HO completion indication at the end for testing
+  //    send_ho_completion_indication();
+  //    LOG_I(NR_RRC, "Sent HO completion indication for UE %d\n", ue_context_pP->ue_context.rrc_ue_id);
+  //  #endif
 }
 
 static int rrc_gNB_encode_RRCReconfiguration(gNB_RRC_INST *rrc,
@@ -2460,132 +2462,6 @@ void rrc_remove_ue(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p)
   rrc_gNB_remove_ue_context(rrc, ue_context_p);
 }
 
-#ifdef E2_AGENT
-
-static void send_ho_completion_indication(uint32_t ue_id, uint32_t source_du, uint32_t target_du)
-{
-  // Check if E2 Agent is enabled
-  if (!oai_args.enabled) {
-    LOG_D(NR_RRC, "E2 agent not enabled\n");
-    return;
-  }
-
-  // Get the active agent instance using the getter function
-  lock_agents_mutex();
-  agent_instance_t *instance = get_agent_instance(0);
-  if (instance == NULL) {
-    LOG_E(NR_RRC, "Failed to get agent instance\n");
-    unlock_agents_mutex();
-    return;
-  }
-
-  void *e2_agent = get_instance_agent(instance);
-  bool is_active = is_agent_active(instance);
-  if (!is_active || e2_agent == NULL) {
-    LOG_E(NR_RRC, "E2 Agent instance not initialized or not active\n");
-    unlock_agents_mutex();
-    return;
-  }
-  // Get plugin structure using accessor function
-  plugin_wrapper_t *plugin = get_agent_plugin(e2_agent);
-  if (plugin == NULL) {
-    LOG_E(NR_RRC, "Failed to get agent plugin\n");
-    unlock_agents_mutex();
-    return;
-  }
-  // Lock the service model data structure mutex
-  pthread_mutex_t *mtx = get_plugin_mutex(plugin);
-  if (mtx == NULL) {
-    LOG_E(NR_RRC, "Failed to get plugin mutex\n");
-    free(plugin);
-    unlock_agents_mutex();
-    return;
-  }
-
-  pthread_mutex_lock(mtx);
-
-  // Get the service model using accessor function
-  sm_agent_t *sm = (sm_agent_t *)get_sm_from_tree(plugin, 148);
-  if (sm == NULL) {
-    LOG_E(NR_RRC, "GTP Service Model not found (ID: %d)\n", 148);
-    pthread_mutex_unlock(&plugin->mtx);
-    unlock_agents_mutex();
-    return;
-  }
-
-  // Prepare GTP indication message
-  gtp_ind_msg_t ind_msg = {0};
-
-  // Fill indication message with handover information
-  ind_msg.tstamp = time_now_us();
-  ind_msg.ngut = NULL; // No GTP tunnel stats for HO indication
-  ind_msg.len = 0; // No GTP tunnel stats length
-
-  // Fill handover info
-  ind_msg.ho_info.ue_id = ue_id;
-  ind_msg.ho_info.source_du = source_du;
-  ind_msg.ho_info.target_du = target_du;
-  ind_msg.ho_info.ho_complete = true;
-
-  // Create indication message
-  sm_ind_data_t ind_data = {0};
-  ind_data.ind_msg = (uint8_t *)&ind_msg;
-
-  // Call the indication handler
-  exp_ind_data_t exp = sm->proc.on_indication(sm, &ind_data);
-
-  // Unlock mutexes
-  pthread_mutex_unlock(mtx);
-  free(plugin);
-  unlock_agents_mutex();
-
-  if (!exp.has_value) {
-    LOG_E(NR_RRC, "Failed to create indication data\n");
-    return;
-  }
-
-  LOG_I(NR_RRC, "Sent handover completion indication - UE:%u Source DU:%u Target DU:%u\n", ue_id, source_du, target_du);
-
-  // Free the encoded buffers if needed
-  if (exp.data.ind_hdr)
-    free(exp.data.ind_hdr);
-  if (exp.data.ind_msg)
-    free(exp.data.ind_msg);
-
-  // // Set the read_ind callback data
-  // gtp_sm->io.read_ind = &ind_msg;
-
-  // Get indication from service model
-  // exp_ind_data_t exp = on_indication_gtp_sm_ag(gtp_sm, NULL);
-
-  // if (!exp.has_value) {
-  //   LOG_E(NR_RRC, "Failed to create indication data\n");
-  //   return;
-  // }
-
-  // // Send the indication through E2AP
-  // if (gtp_sm->ep.ind_cb) {
-  //   gtp_sm->ep.ind_cb(exp.data.ind_hdr, exp.data.len_hdr, exp.data.ind_msg, exp.data.len_msg, NULL,
-  //                     0); // No call process ID
-
-  //   LOG_I(NR_RRC, "Sent handover completion indication - UE:%u Source DU:%u Target DU:%u\n", ue_id, source_du, target_du);
-  // } else {
-  //   LOG_E(NR_RRC, "Indication callback not set\n");
-  // }
-
-  // // Free the encoded buffers
-  // free(exp.data.ind_hdr);
-  // free(exp.data.ind_msg);
-}
-
-// // Helper function to get GTP SM agent
-// static sm_gtp_agent_t *get_gtp_sm_agent(void)
-// {
-//   void *sm = get_sm_agent_by_type(GTP_STATS_V0);
-//   return (sm_gtp_agent_t *)sm;
-// }
-#endif
-
 static void rrc_CU_process_ue_context_release_complete(MessageDef *msg_p)
 {
   const int instance = 0;
@@ -2600,16 +2476,19 @@ static void rrc_CU_process_ue_context_release_complete(MessageDef *msg_p)
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
 #ifdef E2_AGENT
   if (UE->ho_context != NULL) {
-    // TODO remove this! check for release_ue which should be set before and
-    // trigger the full release
-    LOG_A(NR_RRC, "handover for UE %d/RNTI%04xcomplete!\n", UE->rrc_ue_id, UE->rnti);
+    //  TODO remove this! check for release_ue which should be set before and
+    //  trigger the full release
+    LOG_A(NR_RRC, "Surrey near-RT RIC: Handover for UE %d/RNTI%04xcomplete!\n", UE->rrc_ue_id, UE->rnti);
+    LOG_SURREY_E2AGENT("Surrey near-RT RIC: send_ho_completion_indication from Source DU: %d to Target DU: %d \n",
+                       UE->ho_context->source->du_ue_id,
+                       UE->ho_context->target->du_ue_id);
+    send_ho_completion_indication();
   } else {
     LOG_A(NR_RRC, "Not handover !\n");
   }
-  // free_ho_ctx(UE->ho_context);
-  // UE->ho_context = NULL;
-  // IF REQUIRED, THIS IS THE POINT TO SEND A MESSAGE TO RIC
-  send_ho_completion_indication(complete->gNB_CU_ue_id, UE->ho_context->source->du_ue_id, UE->ho_context->target->du_ue_id);
+// free_ho_ctx(UE->ho_context);
+// UE->ho_context = NULL;
+// IF REQUIRED, THIS IS THE POINT TO SEND A MESSAGE TO RIC
 #endif
   if (UE->an_release) {
     /* only trigger release if it has been requested by core
