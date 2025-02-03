@@ -73,7 +73,11 @@ bool read_gtp_sm(void* data)
       gtp->msg.ho_info.ho_complete = false; // Since this is completion indication
     }
     // Fill handover information
-    LOG_SURREY_SM("Fill handover information : DU Handover ---> %s\n", gtp->msg.ho_info.ho_complete ? "TRUE" : "FALSE");
+    if (gtp->msg.ho_info.ho_complete == true)
+      LOG_SURREY_SM("DU Handover: TRUE, UE ID: %d, Source DU ID: %d, Target DU: %d\n",
+                    UE->rrc_ue_id,
+                    UE->ho_context->source->du_ue_id,
+                    UE->ho_context->target->du_ue_id);
   }
 
 #if defined(NGRAN_GNB_CUCP) && defined(NGRAN_GNB_CUUP)
