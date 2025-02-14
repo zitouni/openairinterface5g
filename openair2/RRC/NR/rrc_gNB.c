@@ -2483,9 +2483,10 @@ static void rrc_CU_process_ue_context_release_complete(MessageDef *msg_p)
                        UE->ho_context->source->du_ue_id,
                        UE->ho_context->target->du_ue_id);
     send_ho_completion_indication();
-  } else {
-    LOG_A(NR_RRC, "Not handover !\n");
   }
+  // else {
+  //   LOG_A(NR_RRC, "Not handover !\n");
+  // }
 // free_ho_ctx(UE->ho_context);
 // UE->ho_context = NULL;
 // IF REQUIRED, THIS IS THE POINT TO SEND A MESSAGE TO RIC
