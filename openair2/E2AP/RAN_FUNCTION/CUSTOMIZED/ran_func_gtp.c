@@ -65,19 +65,20 @@ bool read_gtp_sm(void* data)
       gtp->msg.ho_info.source_du = UE->ho_context->source->du_ue_id;
       gtp->msg.ho_info.target_du = UE->ho_context->target->du_ue_id;
       gtp->msg.ho_info.ho_complete = true; // Since this is completion indication
+
+      // Fill handover information
+      if (gtp->msg.ho_info.ho_complete == true)
+        LOG_SURREY_SM("DU Handover: TRUE, UE ID: %d, Source DU ID: %d, Target DU: %d\n",
+                      UE->rrc_ue_id,
+                      UE->ho_context->source->du_ue_id,
+                      UE->ho_context->target->du_ue_id);
       break; // Take the first UE in handover state
     } else {
       gtp->msg.ho_info.ue_id = UE->rrc_ue_id; // or gNB_CU_ue_id
-      gtp->msg.ho_info.source_du = 11;
-      gtp->msg.ho_info.target_du = 12;
+      gtp->msg.ho_info.source_du = 1111;
+      gtp->msg.ho_info.target_du = 1111;
       gtp->msg.ho_info.ho_complete = false; // Since this is completion indication
     }
-    // Fill handover information
-    if (gtp->msg.ho_info.ho_complete == true)
-      LOG_SURREY_SM("DU Handover: TRUE, UE ID: %d, Source DU ID: %d, Target DU: %d\n",
-                    UE->rrc_ue_id,
-                    UE->ho_context->source->du_ue_id,
-                    UE->ho_context->target->du_ue_id);
   }
 
 #if defined(NGRAN_GNB_CUCP) && defined(NGRAN_GNB_CUUP)
