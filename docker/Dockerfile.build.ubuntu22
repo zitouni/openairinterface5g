@@ -58,10 +58,13 @@
       echo "OAI build completed successfully"
 
   ## Build FlexRIC for SM Models
-  RUN mkdir -p openair2/E2AP/flexric/build && \
-      cd openair2/E2AP/flexric/build && \
+  RUN cd openair2/E2AP/flexric && \
+      rm -rf build && \
+      mkdir -p build && \
+      cd build && \
       rm -rf  openair2/E2AP/flexric/CMakeCache.txt  openair2/E2AP/flexric/CMakeFiles && \
-      cmake -GNinja -DCMAKE_BUILD_TYPE=Release \
+      cmake -GNinja \
+            -DCMAKE_BUILD_TYPE=Release \
             -DXAPP_MULTILANGUAGE=OFF \
             -DKPM_VERSION=KPM_V2_03 \
             -DE2AP_VERSION=E2AP_V2 \
