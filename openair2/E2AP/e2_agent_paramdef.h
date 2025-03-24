@@ -29,6 +29,7 @@
 #define E2AGENT_CLIENT_IP "local_ip_addr"
 #define E2AGENT_CONFIG_SMDIR "sm_dir"
 #define MAX_RIC_IP_ADDRESSES 20 // Maximum number of RIC IP addresses supported
+#define MAX_RIC_IP_LENGTH 16 // Maximum length for IPv4 address string
 
 // Structure to hold multiple RIC IP addresses
 typedef struct {
