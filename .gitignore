@@ -1,13 +1,22 @@
 # vim swp
 *.swp
 
-# log and exec file
+# Build and CMake directories
 cmake_targets/log/
 cmake_targets/*/build/
 cmake_targets/ran_build/
 cmake_targets/nas_sim_tools/build/
 log/
 lte_build_oai/
+build/
+**/build/
+/build*/
+CMakeFiles/
+**/CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.cmake
+Makefile
 
 # IDE files
 .vscode
@@ -25,3 +34,4 @@ tags
 nfapi_nr_interface_scf
 *.log
 *.out
+
