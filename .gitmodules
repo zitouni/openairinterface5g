@@ -1,4 +1,4 @@
 [submodule "openair2/E2AP/flexric"]
 	path = openair2/E2AP/flexric
-	url = https://gitlab.surrey.ac.uk/o-ran/flexric.git
+	url = https://github.com/zitouni/flexric_scale.git
 	branch = remotes/origin/service-models-integration
