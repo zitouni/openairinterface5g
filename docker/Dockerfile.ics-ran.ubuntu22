@@ -1,0 +1,137 @@
+
+# Stage 1: Initial base setup
+FROM ubuntu:jammy AS ran-base
+ARG NEEDED_GIT_PROXY
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Paris
+ENV BUILD_UHD_FROM_SOURCE=True
+ENV UHD_VERSION=4.4.0.0
+
+# Install developers packages and dependencies
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get upgrade --yes && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --yes \
+        build-essential \
+        psmisc \
+        git \
+        gcc-12 \
+        g++-12 \
+        xxd \
+        libpcre2-dev \
+        python3-dev \
+        libsqlite3-dev \
+        bison \
+        flex \
+        m4 \
+        ninja-build \
+        python3-pip && \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 --slave /usr/bin/g++ g++ /usr/bin/g++-12 && \
+    pip3 install --ignore-installed pyyaml
+
+# Add Tini
+ENV TINI_VERSION=v0.19.0
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
+RUN chmod +x /tini
+
+# Configure git proxy if needed
+RUN /bin/bash -c "if [[ -v NEEDED_GIT_PROXY ]]; then git config --global http.proxy $NEEDED_GIT_PROXY; fi"
+
+# Stage 2: Build stage
+FROM ran-base AS ran-build
+
+# Set up working directory
+WORKDIR /ics-ran
+
+# Copy only build configuration files first
+
+COPY cmake_targets/tools cmake_targets/tools/
+COPY cmake_targets/build_oai cmake_targets/
+COPY cmake_targets/*.cmake cmake_targets/
+COPY CMakeLists.txt .
+COPY oaienv .
+
+
+RUN apt-get update && \
+    apt-get install -y apt-utils && \
+    rm -rf /var/lib/apt/lists/*
+# Install dependencies first (this layer will be cached)
+RUN /bin/sh oaienv && \
+    cd cmake_targets && \
+    mkdir -p log && \
+    ./build_oai -I  -w USRP --install-optional-packages
+
+# Copy core source files needed for main build
+# COPY common/ common/
+# COPY doc/ doc/
+# COPY nfapi/ nfapi/
+# COPY openair1/ openair1/
+# COPY openair2/ openair2/
+# COPY openair3/ openair3/
+# COPY radio/ radio/
+# COPY executables/ executables/
+# COPY targets/ targets/
+COPY . .
+
+# Build OAI
+RUN /bin/sh oaienv && \
+    cd cmake_targets && \
+    ./build_oai --gNB --nrUE -w SIMU -w USRP --build-lib nrscope --build-e2 --ninja && \
+    echo "OAI build completed successfully"
+
+# Copy FlexRIC files separately
+COPY openair2/E2AP/flexric openair2/E2AP/flexric/
+
+# Build FlexRIC
+RUN cd openair2/E2AP/flexric && \
+    mkdir -p build && \
+    cd build && \
+    cmake -GNinja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DXAPP_MULTILANGUAGE=OFF \
+          -DKPM_VERSION=KPM_V2_03 \
+          -DE2AP_VERSION=E2AP_V2 \
+          -DCMAKE_C_COMPILER=gcc-12 \
+          -DCMAKE_CXX_COMPILER=g++-12 .. && \
+    ninja && \
+    ninja install && \
+    echo "FlexRIC build completed successfully"
+
+# Stage 3: Final runtime image
+FROM ubuntu:22.04 AS runtime
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    sudo \
+    libboost-all-dev \
+    libusb-1.0-0 \
+    python3 \
+    python3-pip \
+    libuhd-dev \
+    uhd-host \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create and configure user
+RUN useradd -m oaiuser && \
+    echo "oaiuser:oaiuser" | chpasswd && \
+    adduser oaiuser sudo && \
+    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+# Copy built artifacts from builder stage
+COPY --from=ran-build --chown=oaiuser:oaiuser /ics-ran/cmake_targets/ran_build /ics-ran/ran_build
+COPY --from=ran-build --chown=oaiuser:oaiuser /usr/local/lib/flexric /usr/local/lib/flexric
+COPY --from=ran-build --chown=oaiuser:oaiuser /usr/local/include/flexric /usr/local/include/flexric
+COPY --from=ran-build /tini /tini
+
+# Set working directory
+WORKDIR /ics-ran
+
+# Switch to oaiuser
+USER oaiuser
+
+# Create run script
+RUN echo '#!/bin/bash\n\
+exec sudo /ics-ran/cmake_targets/ran_build/build/nr-softmodem "$@"' > /ics-ran/run_with_sudo.sh && \
+    chmod +x /ics-ran/run_with_sudo.sh
+
+# Set entrypoint
+ENTRYPOINT ["/tini", "--", "/ics-ran/run_with_sudo.sh"]
